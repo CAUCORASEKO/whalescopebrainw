@@ -1,0 +1,10 @@
+requests==2.31.0
+pandas==2.2.2
+yfinance==0.2.59
+plotly==6.0.1
+fredapi==0.5.2
+websocket-client==1.8.0
+matplotlib==3.10.1
+yfinance==0.2.59
+aiohttp==3.10.0
+

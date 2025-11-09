@@ -1,0 +1,62 @@
+# Core logging & dirs
+appdirs==1.4.4      # usado en whalescope.py, bitcoin.py, eth.py
+platformdirs==4.2.2 # requerido por dependencias modernas
+
+# Networking
+requests==2.32.3
+urllib3==2.2.2
+certifi==2024.6.2
+charset-normalizer==3.3.2
+idna==3.7
+websockets==10.4
+
+# Data processing
+numpy==1.26.4
+pandas==2.2.2
+python-dateutil==2.9.0.post0
+pytz==2024.1
+tzdata==2024.1
+
+# ML/Stats
+scikit-learn==1.4.2
+scipy==1.14.1
+statsmodels==0.14.5
+
+# Utils
+multitasking==0.0.11
+frozendict==2.4.4
+six==1.16.0
+typing_extensions==4.12.2
+
+# Web & parsing
+beautifulsoup4==4.12.3
+soupsieve==2.5
+curl_cffi==0.7.1
+
+# Crypto APIs
+ccxt==4.4.6
+python-binance==1.0.29
+yfinance==0.2.40
+
+# Visualization & Reports
+matplotlib==3.9.2
+plotly==5.24.1
+kaleido==0.2.1
+reportlab==4.2.2
+fpdf2==2.7.9
+markdown==3.6   
+
+# Web backend
+flask==3.0.3
+
+# Env
+python-dotenv==1.0.1
+protobuf==5.27.1
+peewee==3.17.5
+pycparser==2.22
+
+# AI
+openai>=1.42.0
+
+
+

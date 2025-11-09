@@ -1,0 +1,669 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta http-equiv="Content-Security-Policy" 
+        content="default-src 'self'; 
+                 script-src 'self' 'unsafe-inline' https://cdn.plot.ly https://cdnjs.cloudflare.com https://cdn.jsdelivr.net; 
+                 style-src 'self' 'unsafe-inline'; 
+                 img-src 'self' data: blob: file:; 
+                 connect-src 'self' http://127.0.0.1:5001 http://localhost:5001;">
+  <title>WhaleScope</title>
+  <link rel="stylesheet" href="styles.css">
+
+  <!-- External libraries -->
+  <script src="https://cdn.plot.ly/plotly-2.35.2.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+</head>
+<body>
+  <h1>WhaleScope</h1>
+
+  <!-- ================= CONFIG PANEL ================= -->
+  <div id="config-section" class="section active">
+    <h2>Configure API Keys</h2>
+    <p>Enter your API keys to unlock WhaleScope modules:</p>
+
+    <form id="config-form">
+      <div class="config-input">
+        <label>Binance API Key:</label>
+        <input type="text" id="apiKey" required>
+      </div>
+      <div class="config-input">
+        <label>Binance API Secret:</label>
+        <input type="password" id="apiSecret" required>
+      </div>
+      <div class="config-input">
+        <label>CoinGecko API Key:</label>
+        <input type="text" id="coingeckoKey">
+      </div>
+      <div class="config-input">
+        <label>Arkham API Key:</label>
+        <input type="text" id="arkhamKey">
+      </div>
+      <div class="config-input">
+        <label>CoinMarketCap API Key :</label>
+        <input type="text" id="cmcKey">
+      </div>
+      <div class="config-input">
+        <label>Allium API Key :</label>
+        <input type="text" id="alliumKey">
+      </div>
+      <div class="config-input">
+        <label>OpenAI API Key :</label>
+        <input type="text" id="openaiKey">
+      </div>
+
+      <button type="submit" class="filter-btn">Save & Continue</button>
+    </form>
+
+    <p id="config-status" style="display:none; font-weight:600; margin-top:10px;"></p>
+  </div>
+
+  <!-- ================= MAIN APP (hidden until config saved) ================= -->
+  <div id="main-app" style="display:none;">
+    <!-- Navigation menu -->
+    <div id="navButtons">
+        <!-- <button class="navBtn" data-section="eth-section" onclick="window.showSection('eth')">ETH</button> -->
+      <button class="navBtn" data-section="marketbrain-section" onclick="window.showSection('marketbrain')">MarketBrain</button>
+    </div>
+
+    <!--
+================= ETH SECTION =================
+
+<div id="eth-section" class="section">
+  <h2>ETH Analytics</h2>
+  <div id="eth-loading" class="loading">Loading...</div>
+  <div id="eth-status"></div>
+
+  <div id="eth-filters">
+    <label for="eth-startDate">Start Date:</label>
+    <input id="eth-startDate" type="date" />
+    <label for="eth-endDate">End Date:</label>
+    <input id="eth-endDate" type="date" />
+    <button id="eth-refreshBtn" class="filter-btn">Refresh Data</button>
+    <button id="eth-exportCsvBtn" class="filter-btn">Export CSV</button>
+    <button id="eth-exportPdfBtn" class="filter-btn">Export PDF</button>
+  </div>
+
+  <div class="flex-row">
+    <div class="card card-flex-large">
+      <h3>Price Trend (Historical Data)</h3>
+      <div id="eth-priceTrendError" class="error"></div>
+      <div class="chart-wrapper">
+        <div id="eth-priceTrendChart"></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h3>Market Stats (Updated: <span id="eth-lastUpdated">N/A</span>)</h3>
+      <div class="table-container">
+        <table>
+          <thead><tr><th>Metric</th><th>Value</th></tr></thead>
+          <tbody id="eth-marketStatsTableBody">
+            <tr><td colspan="2" class="centered-cell">Loading data...</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="card">
+      <h3>Performance Metrics</h3>
+      <div class="table-container">
+        <table>
+          <thead><tr><th>Period</th><th>Change (%)</th></tr></thead>
+          <tbody id="eth-performanceTableBody">
+            <tr><td colspan="2" class="centered-cell">Loading data...</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <div class="flex-row">
+    <div class="card card-flex-large">
+      <h3>Whale Activity (Top Flows)</h3>
+      <div class="table-container whale-scroll">
+        <table>
+          <thead>
+            <tr>
+              <th>Date & Time</th>
+              <th>Input (USD)</th>
+              <th>Output (USD)</th>
+              <th>Status</th>
+            </tr>
+          </thead>
+          <tbody id="eth-topFlowsTableBody">
+            <tr><td colspan="4" class="centered-cell">Loading data...</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div id="ethWhaleFlowsChart" class="whale-chart" style="height:400px; margin-top:20px;"></div>
+    </div>
+  </div>
+
+  <div class="flex-row">
+    <div class="card card-flex-large">
+      <h3>Transaction Fees</h3>
+      <div id="eth-feesError" class="error"></div>
+      <div class="chart-wrapper">
+        <div id="eth-feesChart"></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="flex-row">
+    <div class="analysis-card">
+      <h3>On-chain Insights</h3>
+      <div id="ethInsights" class="insights-body">
+        <p class="centered-cell">Loading insights...</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+END ETH
+-->
+    
+    <!-- ================================================
+     MARKETBRAIN DASHBOARD
+================================================= -->
+<div id="marketbrain-section" class="section">
+
+  <h2>MarketBrain Dashboard</h2>
+
+  <!-- Filters -->
+  <div class="filters-container" id="marketbrain-filters">
+
+    <input type="text" id="marketbrain-symbols" value="ETH">
+
+    <!-- ✅ Date inputs envueltos para poder ocultar -->
+    <div id="marketbrain-date-controls">
+      <input type="date" id="marketbrain-start">
+      <input type="date" id="marketbrain-end">
+    </div>
+
+    <button id="marketbrain-loadBtn" class="filter-btn accent">Load Data</button>
+    <button id="marketbrain-refreshBtn" class="filter-btn">Refresh</button>
+    <button id="marketbrain-exportCsvBtn" class="filter-btn">Export CSV</button>
+    <button id="marketbrain-exportPdfBtn" class="filter-btn">Export PDF</button>
+
+  </div>
+
+  <!-- Subtabs -->
+  <div class="subtabs">
+    <button id="btnAlliumData" class="filter-btn active">Allium On-chain Data</button>
+    <button id="btnBinanceMarket" class="filter-btn">Binance Market</button>
+    <button id="btnBinancePolar" class="filter-btn">Binance Polar</button>
+  </div>
+
+<!-- =======================
+     Allium Data View
+======================= -->
+<div id="marketbrain-allium-view">
+
+  <!-- KPIs (Allium only) -->
+  <div class="kpi-grid">
+    <div class="kpi-card"><h3>Total Stake USD</h3><p id="kpi-total-stake">–</p></div>
+    <div class="kpi-card"><h3>Active Stake USD</h3><p id="kpi-active-stake">–</p></div>
+    <div class="kpi-card"><h3>% Active</h3><p id="kpi-pct-active">–</p></div>
+    <div class="kpi-card"><h3>Avg Price (USD)</h3><p id="kpi-price">–</p></div>
+  </div>
+
+  <!-- Charts -->
+  <div id="marketbrain-charts" class="grid-2x2"></div>
+
+  <!-- Staking Table -->
+  <div class="table-container marketbrain-scroll">
+    <table class="styled-table">
+      <thead>
+        <tr>
+          <th>Symbol</th>
+          <th>Date</th>
+          <th>Active Stake (USD)</th>
+          <th>Total Stake (USD)</th>
+          <th>% Active</th>
+          <th>% Circ. Staked</th>
+          <th>Net Flow</th>
+          <th>Deposits</th>
+          <th>Withdrawals</th>
+        </tr>
+      </thead>
+      <tbody id="marketbrain-tableBody">
+        <tr><td colspan="9" class="centered-cell">No data</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- AI Insights -->
+  <div class="analysis-card">
+    <h3>AI Insights</h3>
+    <div id="marketbrain-insights" class="insights-body markdown-view">
+      <p class="centered-cell">No insights yet.</p>
+    </div>
+  </div>
+
+  <!-- Loading spinner -->
+  <div id="marketbrain-loading" class="loading" style="display:none;">
+    <p>Loading MarketBrain data...</p>
+  </div>
+
+</div>    
+
+<!-- =======================
+     Binance Market View
+======================= -->
+<div id="marketbrain-binance-market" style="display:none;">
+
+  <h2>Binance Market Analytics</h2>
+  <!-- ✅ Botones de Exportar (Nuevo) -->
+   
+
+
+  <div id="bm-loading" class="loading">Loading...</div>
+  <div id="bm-status"></div>
+
+  <!-- Charts & Stats -->
+  <div class="flex-row">
+    <div class="card card-flex-large">
+      <h3>Price Trend (Historical Data)</h3>
+      <div id="bm-priceTrendError" class="error"></div>
+      <div class="chart-wrapper">
+        <div id="bm-priceTrendChart"></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h3>Market Stats (Updated: <span id="bm-lastUpdated">N/A</span>)</h3>
+      <div class="table-container">
+        <table>
+          <thead><tr><th>Metric</th><th>Value</th></tr></thead>
+          <tbody id="bm-marketStatsTableBody">
+            <tr><td colspan="2" class="centered-cell">Loading data...</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="card">
+      <h3>Performance Metrics</h3>
+      <div class="table-container">
+        <table>
+          <thead><tr><th>Period</th><th>Change (%)</th></tr></thead>
+          <tbody id="bm-performanceTableBody">
+            <tr><td colspan="2" class="centered-cell">Loading data...</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- Whale Activity -->
+  <div class="flex-row">
+    <div class="card card-flex-large">
+      <h3>Whale Activity (Top Flows)</h3>
+      <div class="table-container whale-scroll">
+        <table>
+          <thead>
+            <tr>
+              <th>Date & Time</th>
+              <th>Input (USD)</th>
+              <th>Output (USD)</th>
+              <th>Status</th>
+            </tr>
+          </thead>
+          <tbody id="bm-topFlowsTableBody">
+            <tr><td colspan="4" class="centered-cell">Loading data...</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div id="bm-whaleFlowsChart" class="whale-chart" style="height:400px; margin-top:20px;"></div>
+    </div>
+  </div>
+
+  <!-- Transaction Fees -->
+  <div class="flex-row">
+    <div class="card card-flex-large">
+      <h3>Transaction Fees</h3>
+      <div id="bm-feesError" class="error"></div>
+      <div class="chart-wrapper">
+        <div id="bm-feesChart"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Insights -->
+  <div class="flex-row">
+    <div class="analysis-card">
+      <h3>Market Insights</h3>
+      <div id="bm-insights" class="insights-body">
+        <p class="centered-cell">Loading insights...</p>
+      </div>
+    </div>
+  </div>
+
+</div> <!-- ✅ cierre correcto -->
+
+      <!-- =======================
+           Binance Polar View
+      ======================= -->
+      <div id="marketbrain-binance-polar" style="display:none;">
+        <h3>Binance Polar Rotation Map</h3>
+
+        <div class="controls-row" style="margin-bottom:10px;">
+          <label>Sort:</label>
+          <select id="binance_polar-order">
+            <option value="none">None</option>
+            <option value="ascending">Ascending</option>
+            <option value="descending">Descending</option>
+          </select>
+
+          <button id="binance_polar-daily" class="subtab-btn">Daily</button>
+          <button id="binance_polar-weekly" class="subtab-btn">Weekly</button>
+          <button id="binance_polar-monthly" class="subtab-btn">Monthly</button>
+          <button id="binance_polar-yearly" class="subtab-btn">Yearly</button>
+        </div>
+
+        <div id="binancePolarChart" style="height:500px; margin-top:10px;"></div>
+
+        <div class="table-container marketbrain-scroll" style="margin-top:20px;">
+          <table class="styled-table">
+            <thead>
+              <tr><th>Symbol</th><th>% Dominance</th><th>Volume (USD)</th><th>Volatility Δ</th></tr>
+            </thead>
+            <tbody id="binance_polar-tableBody"></tbody>
+          </table>
+        </div>
+
+        <div class="analysis-card">
+          <h3>Insights</h3>
+          <div id="binance_polar-insights" class="insights-body"></div>
+        </div>
+      </div>
+    </div>
+    <!-- END MARKETBRAIN -->
+  </div>
+
+  <!-- ================= JS ================= -->
+  <script>
+    const API_BASE = "http://127.0.0.1:5001";
+
+    document.addEventListener("DOMContentLoaded", () => {
+      console.log('[Index] DOM loaded');
+
+      // === CONFIG API KEYS ===
+      const form = document.getElementById('config-form');
+      if (form) {
+        form.addEventListener('submit', async (e) => {
+          e.preventDefault();
+          const cfg = {
+            BINANCE_API_KEY: document.getElementById('apiKey').value.trim(),
+            BINANCE_API_SECRET: document.getElementById('apiSecret').value.trim(),
+            ARKHAM_API_KEY: document.getElementById('arkhamKey').value.trim(),
+            CMC_API_KEY: document.getElementById('cmcKey').value.trim(),
+            ALLIUM_API_KEY: document.getElementById('alliumKey').value.trim(),
+            OPENAI_API_KEY: document.getElementById('openaiKey').value.trim(),
+          };
+          if (!cfg.BINANCE_API_KEY || !cfg.BINANCE_API_SECRET) {
+            alert('Please enter your Binance API key and secret');
+            return;
+          }
+          localStorage.setItem('whalescopeConfig', JSON.stringify(cfg));
+          await window.electronAPI.saveApiKeys(cfg);
+          document.getElementById('config-section').style.display = 'none';
+          document.getElementById('main-app').style.display = 'block';
+          window.showSection('marketbrain');
+        });
+      }
+
+      // Restore config
+      const saved = localStorage.getItem('whalescopeConfig');
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (parsed.BINANCE_API_KEY && parsed.BINANCE_API_SECRET) {
+          console.log('[Index] Restored config');
+          window.electronAPI.saveApiKeys(parsed);
+          document.getElementById('config-section').style.display = 'none';
+          document.getElementById('main-app').style.display = 'block';
+          window.showSection('marketbrain');
+        }
+      }
+    });
+
+    // === NAVIGATION ===
+    window.showSection = function (section) {
+      document.querySelectorAll('.navBtn').forEach(btn => btn.classList.remove('active'));
+      document.querySelectorAll('.section').forEach(sec => sec.classList.remove('active'));
+      const btn = document.querySelector(`.navBtn[data-section="${section}-section"]`);
+      const sec = document.getElementById(`${section}-section`);
+      if (btn && sec) {
+        btn.classList.add('active');
+        sec.classList.add('active');
+        const event = new CustomEvent('sectionChange', { detail: { section } });
+        document.dispatchEvent(event);
+      }
+    };
+
+    // === SECTION CHANGE HANDLER ===
+    document.addEventListener('sectionChange', async (e) => {
+      const { section } = e.detail;
+      const currentSection = document.getElementById(`${section}-section`);
+      if (!currentSection) return;
+
+      const loadingEl = currentSection.querySelector('.loading');
+      if (loadingEl) loadingEl.style.display = 'block';
+
+      try {
+        if (section === 'eth') {
+          const start = document.getElementById('eth-startDate').value || '2025-08-15';
+          const end = document.getElementById('eth-endDate').value || '2025-09-15';
+          const data = await window.electronAPI.loadData({ section: 'eth', startDate: start, endDate: end });
+          renderEth(data);
+        }
+
+        if (section === 'marketbrain') {
+          await loadMarketBrain();
+        }
+      } catch (err) {
+        console.error(`[Renderer] Error loading section ${section}:`, err);
+      } finally {
+        if (loadingEl) loadingEl.style.display = 'none';
+      }
+    });
+
+
+
+
+// === LOAD BUTTON ===
+document.getElementById('marketbrain-loadBtn')?.addEventListener('click', async () => {
+  let symbol = (document.getElementById('marketbrain-symbols').value || 'ETH').trim().toUpperCase();
+  symbol = symbol.split(',')[0];
+  const start = document.getElementById('marketbrain-start').value || null;
+  const end   = document.getElementById('marketbrain-end').value || null;
+
+  const isAlliumView  = (viewAllium.style.display  !== 'none');
+  const isBinanceView = (viewBinance.style.display !== 'none');
+
+  // ===== ALLIUM =====
+  if (isAlliumView) {
+    document.getElementById('marketbrain-loading').style.display = 'block';
+    try {
+      const data = await window.electronAPI.loadData({
+        section: 'marketbrain',
+        symbols: symbol,
+        startDate: start,
+        endDate: end
+      });
+      renderMarketBrain(data);
+    } finally {
+      document.getElementById('marketbrain-loading').style.display = 'none';
+    }
+  }
+
+  // ===== BINANCE =====
+  if (isBinanceView) {
+    const loading = document.getElementById("bm-loading");
+    const status  = document.getElementById("bm-status");
+
+    if (loading) loading.style.display = "block";
+    if (status)  status.textContent = "Loading Binance Market…";
+
+    try {
+      await loadBinanceMarketData(symbol, start, end);
+      if (status) status.textContent = "";
+    } catch (err) {
+      console.error(err);
+      if (status) status.textContent = "Error loading data.";
+    } finally {
+      if (loading) loading.style.display = "none";
+    }
+  }
+});
+
+
+// === RENDER FUNCTIONS ===
+function renderEth(data) { 
+  console.log('[Index] Rendering ETH data:', data); 
+  window.lastMarketBrain = data;
+}
+
+function renderMarketBrain(data) {
+  console.log('[Index] Rendering MarketBrain:', data);
+
+  const tbody = document.getElementById('marketbrain-tableBody');
+  const chartsDiv = document.getElementById('marketbrain-charts');
+  const insightsBox = document.getElementById('marketbrain-insights');
+
+  if (tbody) tbody.innerHTML = '';
+  if (chartsDiv) chartsDiv.innerHTML = '';
+
+  if (!data || !data.results) {
+    if (tbody) tbody.innerHTML = `<tr><td colspan="9" class="centered-cell">No data</td></tr>`;
+    if (insightsBox) insightsBox.innerHTML = `<p>No insights available.</p>`;
+    return;
+  }
+
+  Object.entries(data.results).forEach(([symbol, result]) => {
+    if (result.staking_table && Array.isArray(result.staking_table)) {
+      result.staking_table.forEach(row => {
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+          <td>${row.chain || symbol}</td>
+          <td>${row.activity_date || '-'}</td>
+          <td>${row.active_stake?.toLocaleString() ?? '-'}</td>
+          <td>${row.total_stake?.toLocaleString() ?? '-'}</td>
+          <td>${row.tx_fees_usd?.toFixed(2) ?? '-'}</td>
+          <td>${row.token_price?.toFixed(2) ?? '-'}</td>
+          <td>${row.pct_total_stake_active != null ? row.pct_total_stake_active.toFixed(2) + '%' : '-'}</td>
+          <td>${row.net_flow?.toLocaleString() ?? '-'}</td>
+          <td>${row.deposits?.toLocaleString() ?? '-'}</td>`;
+        tbody.appendChild(tr);
+      });
+    }
+  });
+
+  if (insightsBox && data?.insights) {
+    try {
+      insightsBox.innerHTML = marked.parse(data.insights);
+    } catch {
+      insightsBox.innerHTML = `<p>${data.insights}</p>`;
+    }
+  }
+}
+
+async function loadMarketBrain() {
+  console.log("[Renderer] Opening MarketBrain…");
+  viewAllium.style.display  = "block";
+  viewBinance.style.display = "none";
+  viewPolar.style.display   = "none";
+}
+
+// === SUBTABS ELEMENTS ===
+const btnAllium  = document.getElementById("btnAlliumData");
+const btnBinance = document.getElementById("btnBinanceMarket");
+const btnPolar   = document.getElementById("btnBinancePolar");
+
+const viewAllium  = document.getElementById("marketbrain-allium-view");
+const viewBinance = document.getElementById("marketbrain-binance-market");
+const viewPolar   = document.getElementById("marketbrain-binance-polar");
+
+// === SUBTAB: ALLIUM ===
+btnAllium.onclick = () => {
+  btnAllium.classList.add("active");
+  btnBinance.classList.remove("active");
+  btnPolar.classList.remove("active");
+
+  viewAllium.style.display  = "block";
+  viewBinance.style.display = "none";
+  viewPolar.style.display   = "none";
+};
+
+// === SUBTAB: BINANCE MARKET (FIX ✅ usa el buscador principal) ===
+btnBinance.onclick = async () => {
+  btnBinance.classList.add("active");
+  btnAllium.classList.remove("active");
+  btnPolar.classList.remove("active");
+
+  viewAllium.style.display  = "none";
+  viewBinance.style.display = "block";
+  viewPolar.style.display   = "none";
+
+  const loading = document.getElementById("bm-loading");
+  const status  = document.getElementById("bm-status");
+  if (loading) loading.style.display = "block";
+  if (status)  status.textContent = "Loading Binance Market…";
+
+  const symbol = document.getElementById("marketbrain-symbols")?.value?.trim()?.toUpperCase() || "ETH";
+  const start  = document.getElementById("marketbrain-start")?.value || null;
+  const end    = document.getElementById("marketbrain-end")?.value || null;
+
+  try {
+    await loadBinanceMarketData(symbol, start, end);
+    if (status) status.textContent = "";
+  } catch (err) {
+    console.error(err);
+    if (status) status.textContent = "Error loading data.";
+  } finally {
+    if (loading) loading.style.display = "none";
+  }
+};
+
+// === SUBTAB: BINANCE POLAR ===
+btnPolar.onclick = async () => {
+  btnPolar.classList.add("active");
+  btnAllium.classList.remove("active");
+  btnBinance.classList.remove("active");
+
+  viewAllium.style.display  = "none";
+  viewBinance.style.display = "none";
+  viewPolar.style.display   = "block";
+
+  const chartDiv = document.getElementById("binancePolarChart");
+  if (chartDiv) chartDiv.innerHTML = "Loading...";
+
+  try {
+    const raw = await window.electronAPI.loadData({ section: "binance_polar" });
+    const data = raw?.stdout ? JSON.parse(raw.stdout) : raw;
+    renderBinancePolar(data);
+  } catch (err) {
+    console.error(err);
+    if (chartDiv) chartDiv.innerHTML = "Error loading polar data.";
+  }
+};
+
+// === DEFAULT: Allium Visible ===
+viewAllium.style.display  = "block";
+viewBinance.style.display = "none";
+viewPolar.style.display   = "none";
+btnAllium.classList.add("active");
+  </script>
+
+  <!-- Renderer logic -->
+  <script src="renderer.js"></script>
+</body>
+</html>

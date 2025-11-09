@@ -1,0 +1,99 @@
+# ──────────────────────────────
+# Node.js / Electron
+# ──────────────────────────────
+node_modules/
+dist/
+build/
+*.log
+logs/
+*.zip
+*.dmg
+electron/package-lock.json
+electron/assets/icon.png
+electron/blackrock.log.*
+
+# ──────────────────────────────
+# Python
+# ──────────────────────────────
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+pip-selfcheck.json
+
+# Entornos virtuales y Python embebido
+venv/
+whalescope/venv/
+whalescope/python_embedded/
+python-3.*-macos*.pkg
+
+# ──────────────────────────────
+# Bases de datos
+# ──────────────────────────────
+whalescope.db
+whalescope.db.backup*
+python/whalescope_scripts/whalescope.db
+electron/whalescope.db
+data/whalescope.db
+crypto_data.db
+marketbrain.db
+marketbrain.db.backup*
+*.sqlite
+*.sqlite3
+
+# ──────────────────────────────
+# Archivos generados por scripts
+# ──────────────────────────────
+data/*.json
+cache/*.json
+python/whalescope_scripts/cache/*.json
+
+*.png
+python/whalescope_scripts/*.png
+crypto_market_regression_clean.png
+crypto_time_series_analysis.png
+news_analytic_output.json
+
+# ──────────────────────────────
+# Cache
+# ──────────────────────────────
+cache/
+python/whalescope_scripts/cache/
+*.cache
+data/
+
+# ──────────────────────────────
+# Script outputs (CSV runtime)
+# ──────────────────────────────
+data/*.csv
+cache/*.csv
+python/whalescope_scripts/output.txt
+
+# ──────────────────────────────
+# Archivos temporales
+# ──────────────────────────────
+.DS_Store
+*.bak
+*.tmp
+*.swp
+*.swo
+
+# ──────────────────────────────
+# Configuración sensible
+# ──────────────────────────────
+.env
+*.env
+python/whalescope_scripts/.env
+whalescope/.env
+
+# ──────────────────────────────
+# Mantener config.ini
+# ──────────────────────────────
+!whalescope/config.ini
+
+.venv/
+pyapp/
+**/kaleido
+
+python/whalescope_scripts/DejaVuSans.ttf
