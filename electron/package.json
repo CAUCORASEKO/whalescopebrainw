@@ -42,14 +42,11 @@
     ],
 
     "extraResources": [
-      {
-        "from": "../pyapp",
-        "to": "pyapp"
-      },
-      {
-        "from": "../python",
-        "to": "python"
-      }
+      
+        { "from": "../pyapp", "to": "pyapp" }, 
+        { "from": "../python", "to": "python" },
+        { "from": "../pyapp/fonts", "to": "pyapp/fonts" }
+      
     ],
 
     "mac": {

@@ -1,322 +1,222 @@
 // =============================================================
-// 🐋 Whalescope — Electron Main Process
+// 🐋 Whalescope — Electron Main Process (DEV + DMG READY)
 // =============================================================
 const { app, BrowserWindow, ipcMain, dialog } = require("electron");
 const path = require("path");
 const fs = require("fs");
 const { spawn } = require("child_process");
-let backendProcess = null; // 🔹 Guardará la referencia al proceso Flask
+let backendProcess = null;
 
 // =============================================================
-// 📁 Rutas base
+// 🌍 Entorno & Rutas Base (clave para DEV + .DMG)
 // =============================================================
-
 const isDev = !app.isPackaged;
+
 const apiKeysPath = path.join(app.getPath("userData"), "api_keys.json");
+
+// 🟡 DEV → carpeta del proyecto
+// 🔵 DMG → pyapp dentro del .app
 const projectRoot = isDev
-  ? path.resolve(__dirname, "..")
-  : process.resourcesPath;
+  ? path.resolve(__dirname, "..", "python")   // ✅ DEV correcto
+  : path.join(process.resourcesPath, "pyapp"); // ✅ PROD correcto
 
+// 🐍 Python interpreter
 const pythonPath = isDev
-  ? path.join(projectRoot, ".venv/bin/python3")   // ✅ desarrollo
-  : path.join(process.resourcesPath, "pyapp/bin/python3"); // ✅ prod
-
-console.log("[Main] 🐍 Using Python:", pythonPath);
+  ? path.join(projectRoot, "..", ".venv/bin/python3") // ✅ DEV use .venv
+  : path.join(projectRoot, "bin/python3");            // ✅ PROD uses embedded python
 
 // =============================================================
-// ⚙️ Helpers — Ejecutar scripts Python (Dev vs App Instalada) ✅
+// 🧭 Obtener ruta de script Python según entorno
 // =============================================================
-function runPythonScript(scriptPath, args = []) {
+function getScriptPath(scriptName) {
+  return isDev
+    ? path.join(projectRoot, "whalescope_scripts", scriptName)   // DEV ✅
+    : path.join(projectRoot, "whalescope_scripts", scriptName);  // PROD ✅
+}
+
+// =============================================================
+// ⚙️ Ejecutar script Python
+// =============================================================
+function runPythonScript(scriptName, args = []) {
+  const scriptPath = getScriptPath(scriptName);
+
+  console.log(`[Main] 🐍 Python: ${pythonPath}`);
+  console.log(`[Main] 📄 Script: ${scriptPath}`);
+
   return new Promise((resolve, reject) => {
-    const isDev = !app.isPackaged;
-
-    // ✅ En desarrollo usamos el script original desde el proyecto
-    // ✅ En la app instalada el script está dentro de "Resources/python/whalescope_scripts"
-    const realScriptPath = isDev
-      ? scriptPath
-      : path.join(
-          process.resourcesPath,
-          "python/whalescope_scripts",
-          path.basename(scriptPath) // ✅ evita rutas incorrectas internas
-        );
-
-    console.log(`[Main] 🐍 Running Python script: ${realScriptPath}`);
-
-    // ✅ Usamos pythonPath correcto (ya redefinido antes según Dev/Prod)
-    const proc = spawn(pythonPath, [realScriptPath, ...args], {
+    const proc = spawn(pythonPath, [scriptPath, ...args], {
+      cwd: projectRoot,
+      env: { ...process.env },
       stdio: ["ignore", "pipe", "pipe"],
     });
 
     let stdout = "";
     let stderr = "";
 
-    proc.stdout.on("data", (data) => (stdout += data.toString()));
-    proc.stderr.on("data", (data) => (stderr += data.toString()));
+    proc.stdout.on("data", d => stdout += d.toString());
+    proc.stderr.on("data", d => stderr += d.toString());
 
-    proc.on("close", (code) => {
-      if (code === 0) {
-        resolve(stdout.trim());
-      } else {
-        reject(new Error(stderr || `Python exited with code ${code}`));
-      }
+    proc.on("close", code => {
+      if (code === 0) resolve(stdout.trim());
+      else reject(new Error(stderr || `Python exited with code ${code}`));
     });
   });
 }
+
 // =============================================================
-// 💾 IPC — Guardar / Cargar API Keys
+// 💾 API KEYS — Guardar / Cargar
 // =============================================================
-ipcMain.handle("saveApiKeys", async (event, keys) => {
-  try {
-    fs.writeFileSync(apiKeysPath, JSON.stringify(keys, null, 2));
-    console.log(`[Main] ✅ API keys saved to ${apiKeysPath}`);
-    return { success: true };
-  } catch (err) {
-    console.error("[Main] ❌ Error saving API keys:", err);
-    return { success: false, error: err.message };
-  }
+ipcMain.handle("saveApiKeys", async (_, keys) => {
+  fs.writeFileSync(apiKeysPath, JSON.stringify(keys, null, 2));
+  return { success: true };
 });
 
 ipcMain.handle("loadApiKeys", async () => {
-  try {
-    if (fs.existsSync(apiKeysPath)) {
-      const keys = JSON.parse(fs.readFileSync(apiKeysPath, "utf8"));
-      console.log("[Main] ✅ API keys loaded:", keys);
-      return { success: true, keys };
-    }
-    return { success: false, keys: {} };
-  } catch (err) {
-    console.error("[Main] ❌ Error loading API keys:", err);
-    return { success: false, error: err.message };
-  }
+  if (fs.existsSync(apiKeysPath))
+    return { success: true, keys: JSON.parse(fs.readFileSync(apiKeysPath, "utf8")) };
+  return { success: false, keys: {} };
 });
 
+
+
 // =============================================================
-// 📡 IPC — Carga de datos (desde Flask backend)
+// 📡 IPC — Carga de datos desde Flask Backend (REST)
 // =============================================================
 ipcMain.handle("loadData", async (event, params) => {
   let endpoint = "";
 
-  // ✅ Binance Polar → endpoint fijo sin query
   if (params.section === "binance_polar") {
     endpoint = `http://127.0.0.1:5001/api/binance_polar`;
-  } 
-  
-  // ✅ Todo lo demás → pero SIN el campo section en el query
-  else {
+  } else {
     const q = { ...params };
-    delete q.section; // 🔥 Clave: no mandar 'section' en el query
-
+    delete q.section;
     const query = new URLSearchParams(q).toString();
     endpoint = `http://127.0.0.1:5001/api/${params.section}?${query}`;
   }
 
-  console.log(`[Main] 🌐 Fetching from backend: ${endpoint}`);
+  console.log(`[Main] 🌐 Fetching → ${endpoint}`);
 
   try {
     const res = await fetch(endpoint);
     return await res.json();
   } catch (err) {
-    console.error("[Main] ❌ Error loading data:", err);
+    console.error("[Main] ❌ loadData error:", err);
     return { error: err.message };
   }
 });
 
+
 // =============================================================
-// 📁 IPC — Exportar CSV (MarketBrain / Allium) — FIX ✅
+// 📁 Export CSV — MarketBrain
 // =============================================================
 ipcMain.handle("marketbrain:exportCsv", async (event, { symbols, startDate, endDate }) => {
   const saveDialog = await dialog.showSaveDialog({
-    title: `Export ${symbols} CSV`,
+    title: `Export MarketBrain CSV`,
     defaultPath: `MarketBrain_${symbols}_${startDate}_${endDate}.csv`,
-    filters: [{ name: "CSV Files", extensions: ["csv"] }],
+    filters: [{ name: "CSV Files", extensions: ["csv"] }]
   });
 
   if (saveDialog.canceled) return { canceled: true };
 
-  const scriptPath = isDev
-    ? path.join(projectRoot, "python/whalescope_scripts/export_marketbrain_csv.py")
-    : path.join(process.resourcesPath, "python/whalescope_scripts/export_marketbrain_csv.py");
-
   try {
-    console.log("[Main] 🧾 Running CSV export script...");
+    console.log("[Main] 🧾 Exporting MarketBrain CSV...");
 
-    const tempCsvPath = (await runPythonScript(scriptPath, [
+    const tempCsvPath = await runPythonScript("export_marketbrain_csv.py", [
       symbols,
       startDate,
       endDate
-    ])).trim();
+    ]);
 
-    fs.copyFileSync(tempCsvPath, saveDialog.filePath);
-
+    fs.copyFileSync(tempCsvPath.trim(), saveDialog.filePath);
     require("electron").shell.openPath(saveDialog.filePath);
-    return { canceled: false, filePath: saveDialog.filePath };
 
+    return { success: true, filePath: saveDialog.filePath };
   } catch (err) {
-    console.error("[Main] ❌ CSV Export Error:", err);
-    return { canceled: false, error: err.message };
+    console.error("[Main] ❌ MarketBrain CSV Export Error:", err);
+    return { success: false, error: err.message };
   }
 });
 
 
 // =============================================================
-// 📁 IPC — Exportar CSV (Binance Market) — FIX ✅
+// 📄 Export CSV — Binance Market ✅
 // =============================================================
-ipcMain.handle("binance_market:exportCsv", async (event, { symbol, startDate, endDate }) => {
+ipcMain.handle("binance_market:exportCsv", async (_, { symbol, startDate, endDate }) => {
   const saveDialog = await dialog.showSaveDialog({
-    title: `Export ${symbol} Binance Market CSV`,
     defaultPath: `WhaleScope_${symbol}_${startDate}_${endDate}.csv`,
     filters: [{ name: "CSV Files", extensions: ["csv"] }],
   });
+  if (saveDialog.canceled) return;
 
-  if (saveDialog.canceled) return { canceled: true };
+  const tempCsvPath = await runPythonScript("export_binance_market_csv.py", [
+    symbol.toUpperCase(),
+    "--start-date", startDate,
+    "--end-date", endDate
+  ]);
 
-  const scriptPath = isDev
-    ? path.join(projectRoot, "python/whalescope_scripts/export_binance_market_csv.py")
-    : path.join(process.resourcesPath, "python/whalescope_scripts/export_binance_market_csv.py");
+  fs.copyFileSync(tempCsvPath, saveDialog.filePath);
+  require("electron").shell.openPath(saveDialog.filePath);
+  return { success: true };
+});
 
-  try {
-    console.log("[Main] 🧾 Running Binance Market CSV export script...");
+// =============================================================
+// 📄 Export PDF — Allium & Binance Market ✅
+// =============================================================
+ipcMain.handle("exportPDF", async (_, { section, symbols, startDate, endDate, chartImageBase64 }) => {
+  const saveDialog = await dialog.showSaveDialog({
+    defaultPath: `WhaleScope_${section}_${symbols}_${startDate}_${endDate}.pdf`,
+    filters: [{ name: "PDF Files", extensions: ["pdf"] }],
+  });
+  if (saveDialog.canceled) return;
 
-    const tempCsvPath = (await runPythonScript(scriptPath, [
-      symbol.toUpperCase(),
+  let scriptName, args = [];
+
+  if (section === "allium") {
+    scriptName = "export_pdf_allium.py";
+
+    let chartPath = "";
+    if (chartImageBase64) {
+      chartPath = path.join(app.getPath("temp"), `allium_chart_${Date.now()}.png`);
+      fs.writeFileSync(chartPath, chartImageBase64.replace(/^data:image\/png;base64,/, ""), "base64");
+      args.push(chartPath);
+    }
+
+    args.unshift(symbols.toUpperCase(), startDate, endDate);
+  }
+
+  else if (section === "binance_market") {
+    scriptName = "export_pdf_binance_market.py";
+    args = [
+      symbols.toUpperCase(),
       "--start-date", startDate,
-      "--end-date", endDate,
-    ])).trim();
-
-    fs.copyFileSync(tempCsvPath, saveDialog.filePath);
-
-    require("electron").shell.openPath(saveDialog.filePath);
-    return { canceled: false, filePath: saveDialog.filePath };
-
-  } catch (err) {
-    console.error("[Main] ❌ Binance CSV Export Error:", err);
-    return { canceled: false, error: err.message };
+      "--end-date", endDate
+    ];
   }
-});
 
+  else return { success: false, error: "Export not supported here." };
 
+  const pdfTmpPath = await runPythonScript(scriptName, args);
+  fs.copyFileSync(pdfTmpPath, saveDialog.filePath);
+  require("electron").shell.openPath(saveDialog.filePath);
 
-
-// =============================================================
-// 📄 IPC — Exportar PDF (Allium / Binance Market) ✅
-// =============================================================
-ipcMain.handle("exportPDF", async (event, { section, symbols, startDate, endDate, chartImageBase64 }) => {
-  try {
-    const saveDialog = await dialog.showSaveDialog({
-      title: `Export ${symbols} Report (PDF)`,
-      defaultPath: `WhaleScope_${section}_${symbols}_${startDate}_${endDate}.pdf`,
-      filters: [{ name: "PDF Files", extensions: ["pdf"] }],
-    });
-
-    if (saveDialog.canceled) return { success: false };
-
-    let scriptPath;
-    let args = [];
-
-    // =========================================================
-    // 🟡 ALLIUM (con gráfico opcional)
-    // =========================================================
-    if (section === "allium") {
-      scriptPath = path.join(projectRoot, "python/whalescope_scripts/export_pdf_allium.py");
-
-      // Guardamos el gráfico solo si existe
-      let chartPath = "";
-      if (chartImageBase64) {
-        chartPath = path.join(app.getPath("temp"), `allium_chart_${Date.now()}.png`);
-        fs.writeFileSync(chartPath, chartImageBase64.replace(/^data:image\/png;base64,/, ""), "base64");
-      }
-
-      args = [symbols.toUpperCase(), startDate, endDate];
-      if (chartPath) args.push(chartPath);
-    }
-
-    // =========================================================
-    // 🟦 BINANCE MARKET (sin gráfico)
-    // =========================================================
-    else if (section === "binance_market") {
-      scriptPath = path.join(projectRoot, "python/whalescope_scripts/export_pdf_binance_market.py");
-      args = [
-        symbols.toUpperCase(),
-        "--start-date", startDate,
-        "--end-date", endDate
-      ];
-    }
-
-    // =========================================================
-    // 🚫 BINANCE POLAR — EXPORT DISABLED
-    // =========================================================
-    else if (section === "binance_polar") {
-      console.warn("[Main] ❌ Export PDF blocked for Binance Polar");
-      return { success: false, error: "Export is disabled for Binance Polar." };
-    }
-
-    // =========================================================
-    // ❌ Cualquier otra sección desconocida
-    // =========================================================
-    else {
-      throw new Error(`Unknown PDF export section: ${section}`);
-    }
-
-    console.log("[Main] 🧾 Running PDF script:", scriptPath, "ARGS:", args);
-
-    const pdfTmpPath = (await runPythonScript(scriptPath, args)).trim();
-
-    fs.copyFileSync(pdfTmpPath, saveDialog.filePath);
-
-    const { shell } = require("electron");
-    shell.openPath(saveDialog.filePath);
-
-    console.log(`[Main] ✅ PDF exported → ${saveDialog.filePath}`);
-    return { success: true, filePath: saveDialog.filePath };
-
-  } catch (err) {
-    console.error("[Main] ❌ PDF Export Error:", err);
-    return { success: false, error: err.message };
-  }
-});
-// =============================================================
-// 📂 IPC — Abrir archivo sin crear ventana en blanco ✅
-// =============================================================
-ipcMain.handle("openPath", async (event, filePath) => {
-  const { shell } = require("electron");
-  shell.openPath(filePath); // ✅ Abre el archivo en Preview / Acrobat sin ventana extra
-});
-
-
-
-
-// =============================================================
-// 🐍 IPC — Ejecutar scripts Python directamente
-// =============================================================
-ipcMain.handle("runPython", async (event, scriptPath) => {
-  try {
-    const result = await runPythonScript(scriptPath);
-    return { success: true, output: result };
-  } catch (err) {
-    console.error("[Main] ❌ Error running Python script:", err);
-    return { success: false, error: err.message };
-  }
+  return { success: true };
 });
 
 // =============================================================
-// 🦄 IPC — Obtener datos de Lido Staking
+// 🚀 Flask Backend + Window
 // =============================================================
-ipcMain.handle("getLidoData", async () => {
-  const scriptPath = path.join(projectRoot, "python/whalescope_scripts/lido_staking.py");
-  try {
-    const output = await runPythonScript(scriptPath);
-    return JSON.parse(output);
-  } catch (err) {
-    console.error("[Main] ❌ Error fetching Lido data:", err);
-    return { error: err.message };
-  }
-});
+function startPythonBackend() {
+  const backendScript = getScriptPath("backend_ultra_pro.py");
 
-// =============================================================
-// 🧠 Crear ventana principal
-// =============================================================
+  backendProcess = spawn(pythonPath, [backendScript], {
+    cwd: projectRoot,
+    env: { ...process.env },
+    stdio: "inherit",
+  });
+}
+
 function createWindow() {
-  const win = new BrowserWindow({
+  new BrowserWindow({
     width: 1280,
     height: 860,
     webPreferences: {
@@ -324,66 +224,10 @@ function createWindow() {
       contextIsolation: true,
       nodeIntegration: false,
     },
-  });
-
-  win.loadFile("index.html");
-  return win;
+  }).loadFile("index.html");
 }
 
-// =============================================================
-// 🚀 Iniciar backend Flask (Detecta Desarrollo vs App Instalada)
-// =============================================================
-function startPythonBackend() {
-  const isDev = !app.isPackaged;
-
-  const pythonPath = isDev
-    ? path.join(projectRoot, ".venv/bin/python3") // DEV
-    : path.join(process.resourcesPath, "pyapp/bin/python3"); // PROD ✅
-
-  const backendScript = isDev
-    ? path.join(projectRoot, "python/whalescope_scripts/backend_ultra_pro.py") // DEV
-    : path.join(process.resourcesPath, "pyapp/whalescope_scripts/backend_ultra_pro.py"); // ✅ FIX
-
-  console.log(`[Main] Starting backend with Python: ${pythonPath}`);
-  console.log(`[Main] Using backend script: ${backendScript}`);
-
-  backendProcess = spawn(pythonPath, [backendScript], {
-    cwd: isDev ? projectRoot : path.join(process.resourcesPath, "pyapp"), // ✅ FIX: CWD correcto
-    env: { ...process.env },
-    stdio: "inherit",
-  });
-
-  backendProcess.on("close", (code) => {
-    console.log(`[Main] 🧩 Flask backend exited with code ${code}`);
-  });
-
-  backendProcess.on("error", (err) => {
-    console.error("[Main] ❌ Backend failed to start:", err);
-  });
-}
-
-// =============================================================
-// 🪩 App Lifecycle
-// =============================================================
 app.whenReady().then(() => {
   startPythonBackend();
   createWindow();
-
-  app.on("activate", () => {
-    if (BrowserWindow.getAllWindows().length === 0) createWindow();
-  });
-});
-
-// =============================================================
-// 🧹 Cerrar backend Flask cuando se cierre la app
-// =============================================================
-app.on("before-quit", () => {
-  if (backendProcess) {
-    console.log("[Main] 🧹 Stopping Flask backend...");
-    backendProcess.kill("SIGTERM"); // 🔸 Detiene Flask limpiamente
-  }
-});
-
-app.on("window-all-closed", () => {
-  if (process.platform !== "darwin") app.quit();
 });
