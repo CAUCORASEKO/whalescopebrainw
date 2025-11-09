@@ -96,4 +96,4 @@ whalescope/.env
 pyapp/
 **/kaleido
 
-python/whalescope_scripts/DejaVuSans.ttf
+!python/fonts/** 
