@@ -223,8 +223,8 @@ def detectar_flows_ballenas(data: pd.DataFrame, symbol: str = "BTC", lookback: i
         avg_vol = row["sma_volume"]
         side = None
 
-        # 🔍 Volumen inusualmente alto
-        if vol > avg_vol * 1.8:  # más sensible que antes
+        # 🔍 Unusually high volume
+        if vol > avg_vol * 1.8:  # more sensitive than before
             if row["close"] > row["open"]:
                 side = "buy"
             elif row["close"] < row["open"]:
@@ -242,7 +242,7 @@ def detectar_flows_ballenas(data: pd.DataFrame, symbol: str = "BTC", lookback: i
                 "symbol": symbol
             })
 
-    # ⚙️ Si no detectó nada, toma los últimos días como referencia
+    # ⚙️ If it didn't detect anything, use the last few days as a reference.
     if not signals and len(df) > 0:
         last_rows = df.tail(5)
         for _, row in last_rows.iterrows():

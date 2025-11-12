@@ -321,7 +321,7 @@ def detector_actividad_ballenas(data: pd.DataFrame, volume_threshold: float = 2.
     return buy_volume > (avg_buy_volume * volume_threshold)
 
 # ============================================================
-# Cache de sesión (solo vive mientras la app está abierta)
+# Session cache (only lives while the app is open)
 # ============================================================
 analysis_cache = {}
 
@@ -332,7 +332,7 @@ def set_cached_analysis(key, value):
     analysis_cache[key] = value
 
 # ============================================================
-# CORE FUNCTION (con cache de sesión)
+# CORE FUNCTION (with session cache)
 # ============================================================
 def fetch_eth_data(start_date=None, end_date=None):
     if not end_date:
@@ -394,13 +394,13 @@ def fetch_eth_data(start_date=None, end_date=None):
 
     inflows, outflows = 0.0, 0.0
     for t in trades:
-        usd_val = float(t["p"]) * float(t["q"])  # precio * cantidad
+        usd_val = float(t["p"]) * float(t["q"])  # price * quantity
         if t["m"]:
             outflows += usd_val
         else:
             inflows += usd_val
 
-    # convertir de USD a ETH para consistencia con BTC
+    # Convert from USD to ETH for consistency with BTC
     inflows = inflows / price if price > 0 else 0
     outflows = outflows / price if price > 0 else 0
     net_flow = inflows - outflows
@@ -467,7 +467,7 @@ def fetch_eth_data(start_date=None, end_date=None):
         })
         insights_mode = "basic"
 
-    # --- Resultado final ---
+    # --- Final result ---
     result = {
         "type": "result",
         "markets": {
@@ -496,7 +496,7 @@ def fetch_eth_data(start_date=None, end_date=None):
         "timestamp": datetime.now(timezone.utc).isoformat()
     }
 
-    # --- Guardar en cache de sesión ---
+    # --- Save to session cache ---
     set_cached_analysis(cache_key, result)
     print(f"[CACHE] Stored analysis for {cache_key}", file=sys.stderr)
 

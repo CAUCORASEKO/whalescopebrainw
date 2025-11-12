@@ -1,0 +1,30 @@
+appId: com.whalescope.app
+productName: WhaleScope
+
+directories:
+  output: dist
+  buildResources: build
+
+files:
+  - "**/*"
+  - "!**/.venv/**"
+  - "!**/venv/**"
+  - "!**/__pycache__/**"
+
+extraResources:
+  - from: python/whalescope_scripts
+    to: pyapp/whalescope_scripts/
+
+  - from: .venv/bin/python3
+    to: pyapp/bin/python3
+    executable: true
+
+  - from: .venv/lib/python3.11/site-packages
+    to: pyapp/lib/python3.11/site-packages
+
+mac:
+  category: public.app-category.finance
+  target:
+    - dmg
+
+afterPack: "./afterPackFix.js"

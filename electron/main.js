@@ -17,8 +17,8 @@ const apiKeysPath = path.join(app.getPath("userData"), "api_keys.json");
 // 🟡 DEV → carpeta del proyecto
 // 🔵 DMG → pyapp dentro del .app
 const projectRoot = isDev
-  ? path.resolve(__dirname, "..", "python")   // ✅ DEV correcto
-  : path.join(process.resourcesPath, "pyapp"); // ✅ PROD correcto
+  ? path.resolve(__dirname, "..", "python")
+  : path.join(process.resourcesPath, "python"); // ✅ PROD corregido
 
 // 🐍 Python interpreter
 const pythonPath = isDev
@@ -29,9 +29,9 @@ const pythonPath = isDev
 // 🧭 Obtener ruta de script Python según entorno
 // =============================================================
 function getScriptPath(scriptName) {
-  return isDev
-    ? path.join(projectRoot, "whalescope_scripts", scriptName)   // DEV ✅
-    : path.join(projectRoot, "whalescope_scripts", scriptName);  // PROD ✅
+  
+    return path.join(projectRoot, "whalescope_scripts", scriptName);
+    
 }
 
 // =============================================================
@@ -205,15 +205,40 @@ ipcMain.handle("exportPDF", async (_, { section, symbols, startDate, endDate, ch
 // =============================================================
 // 🚀 Flask Backend + Window
 // =============================================================
-function startPythonBackend() {
-  const backendScript = getScriptPath("backend_ultra_pro.py");
 
-  backendProcess = spawn(pythonPath, [backendScript], {
-    cwd: projectRoot,
+
+function startPythonBackend() {
+  const pythonExec = isDev
+    ? path.join(projectRoot, "..", ".venv/bin/python3")
+    : path.join(process.resourcesPath, "python", "bin", "python3");
+
+  const backendScript = isDev
+    ? path.join(projectRoot, "whalescope_scripts", "backend_ultra_pro.py")
+    : path.join(process.resourcesPath, "python", "whalescope_scripts", "backend_ultra_pro.py");
+
+  console.log("[Main] 🐍 Starting Backend:");
+  console.log(" → Python:", pythonExec);
+  console.log(" → Script:", backendScript);
+
+  backendProcess = spawn(pythonExec, [backendScript], {
+    cwd: isDev
+      ? path.join(projectRoot, "..")
+      : path.join(process.resourcesPath, "python"), // ✅ FIX AQUÍ
     env: { ...process.env },
     stdio: "inherit",
   });
+
+  backendProcess.on("error", (err) => {
+    console.error("[Main] ❌ Backend failed to start:", err);
+  });
+
+  backendProcess.on("close", (code) => {
+    console.log(`[Main] 🧩 Backend closed with code ${code}`);
+  });
 }
+
+
+
 
 function createWindow() {
   new BrowserWindow({
@@ -229,5 +254,5 @@ function createWindow() {
 
 app.whenReady().then(() => {
   startPythonBackend();
-  createWindow();
+  setTimeout(createWindow, 1500); // ⏳ darle tiempo a Flask para arrancar
 });

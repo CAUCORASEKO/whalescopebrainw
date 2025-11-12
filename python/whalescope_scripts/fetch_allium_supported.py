@@ -2,8 +2,7 @@
 """
 fetch_allium_supported.py
 --------------------------------
-Testea qué símbolos son soportados por Allium
-usando el mismo query base (metrics.staking_overview).
+Tests which symbols are supported by Allium using the same base query (metrics.staking_overview).
 """
 
 import os
@@ -30,7 +29,7 @@ SYMBOLS = [
 results = []
 
 def test_symbol(symbol):
-    """Ejecuta un run-async para el símbolo y mide si hay data"""
+    """Run an async command for the symbol and check for data."""
     payload = {
         "parameters": {
             "symbol": symbol,
@@ -40,7 +39,7 @@ def test_symbol(symbol):
         "run_config": {"limit": 1000}
     }
 
-    print(f"\n🔍 Probando {symbol} ...")
+    print(f"\n🔍 Testing {symbol} ...")
     try:
         # 1️⃣ Crear run
         run_url = f"{BASE_URL}/queries/{QUERY_ID}/run-async"
@@ -85,17 +84,17 @@ def test_symbol(symbol):
 
 def main():
     if not API_KEY:
-        print("❌ Falta ALLIUM_API_KEY en el entorno")
+        print("❌ALLIUM_API_KEY is missing from the environment")
         return
 
-    print(f"🚀 Probando {len(SYMBOLS)} símbolos con query_id {QUERY_ID}\n")
+    print(f"🚀 Probando {len(SYMBOLS)} symbols with query_id {QUERY_ID}\n")
     for sym in SYMBOLS:
         res = test_symbol(sym)
         results.append(res)
 
     df = pd.DataFrame(results)
     df.to_csv("allium_supported.csv", index=False)
-    print("\n✅ Resultados guardados en allium_supported.csv")
+    print("\n✅ Results saved in allium_supported.csv")
     print(df)
 
 

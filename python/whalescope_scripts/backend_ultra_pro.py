@@ -258,7 +258,7 @@ def api_binance_market():
             start = (datetime.utcnow() - relativedelta(days=30)).strftime("%Y-%m-%d")
 
         # ✅ Usamos el script nuevo Smart Money + Accumulation
-        script_path = "/Users/cauco/WhaleScope_Recovered/whalescope/python/whalescope_scripts/binance_market_fetcher.py"
+        script_path = os.path.join(os.path.dirname(__file__), "binance_market_fetcher.py")
         args = [symbol, "--start-date", start, "--end-date", end]
 
         logger.info(f"[Binance Market] Fetching data for {symbol} ({start} → {end})")

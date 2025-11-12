@@ -64,7 +64,7 @@ if not API_KEY or not API_SECRET:
 BINANCE_API_URL = "https://api.binance.com"
 # Queries de Allium
 ALLIUM_QUERY_ID_ACTIVITY = CFG.get("ALLIUM_QUERY_ID_ACTIVITY", "VavipYXMPM2oXLWR6Bwm")
-ALLIUM_QUERY_ID_ENTITIES = CFG.get("ALLIUM_QUERY_ID_ENTITIES")  # aún no definido
+ALLIUM_QUERY_ID_ENTITIES = CFG.get("ALLIUM_QUERY_ID_ENTITIES")  
 
 # ============================================================
 # LOGGING
@@ -160,12 +160,12 @@ def build_staking_json(start_date, end_date):
     from datetime import datetime
     import sqlite3, os
 
-    # --- Detectar rango de fechas ---
+    # --- Detect date range ---
     d0 = datetime.fromisoformat(start_date)
     d1 = datetime.fromisoformat(end_date)
     delta_days = (d1 - d0).days
 
-    # Elegir granularidad
+    # Choose granularity
     if delta_days <= 90:
         granularity = "day"
         date_expr = "activity_date"
@@ -180,7 +180,7 @@ def build_staking_json(start_date, end_date):
     with sqlite3.connect(db_path) as conn:
         cur = conn.cursor()
 
-        # --- Leer actividad con resample ---
+        # --- Read activity with resample ---
         cur.execute(f"""
             SELECT {date_expr} as period,
                    SUM(total_stake) as total_stake,
@@ -197,7 +197,7 @@ def build_staking_json(start_date, end_date):
         """, (start_date, end_date))
         rows = cur.fetchall()
 
-        # --- Entities (todos los registros dentro del rango) ---
+        # --- Entities (all records within the range) ---
         cur.execute("""
             SELECT activity_date, entity, staked, share
             FROM eth_entities
@@ -236,10 +236,10 @@ def build_staking_json(start_date, end_date):
         "daily_net_stake": daily_net,
         "deposits_est_eth": deposits,
         "withdrawals_est_eth": withdrawals,
-        "granularity": granularity,   # 👈 importante para frontend
+        "granularity": granularity,   # 👈 important for frontend
     }
 
-    # === Entities (solo snapshot más reciente) ===
+    # === Entities (most recent snapshot only) ===
     entities = [
         {
             "activity_date": er[0],
@@ -256,10 +256,10 @@ def build_staking_json(start_date, end_date):
         entity_dates = sorted({e["activity_date"] for e in entities})
         latest_entities_date = entity_dates[-1]
 
-        # Solo snapshot más reciente
+        # Only most recent snapshot
         filtered = [e for e in entities if e["activity_date"] == latest_entities_date]
 
-        # Ordenar por stake y limitar Top-10
+        # Sort by stake and limit Top-10
         sorted_entities = sorted(
             [(e["entity"], float(e["staked"] or 0.0)) for e in filtered],
             key=lambda x: x[1],
@@ -276,7 +276,7 @@ def build_staking_json(start_date, end_date):
             breakdown_labels.append("Others")
             breakdown_values.append(others_sum)
 
-    # === Marketshare (solo últimas 30 fechas para no explotar JSON) ===
+    # === Market Share (only last 30 dates to avoid JSON overload) ===
     marketshare = {"dates": entity_dates[-30:], "series": []}
     if entities and entity_dates:
         totals_by_date = {}
@@ -323,7 +323,7 @@ def build_staking_json(start_date, end_date):
         for cat in CATEGORY_MAP.keys():
             breakdown_by_category.setdefault(cat, 0.0)
 
-    # === Recent Events (últimos 10 periodos) ===
+    # === Recent Events (last 10 periods) ===
     recent_events = []
     for d, dep, wdr in zip(dates[-10:], deposits[-10:], withdrawals[-10:]):
         recent_events.append({"date": d, "staked": float(dep or 0.0), "unstaked": float(wdr or 0.0)})

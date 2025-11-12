@@ -351,7 +351,8 @@ def fetch_chain_data(symbol, start_date, end_date, use_cache=True, no_insights=F
 
         # Si no hay datos → fallback a CSV
         if not staking_table:
-            backup_csv = "/Users/cauco/WhaleScope_Recovered/whalescope/data/allium_backup.csv"
+            backup_csv = os.path.join(os.path.dirname(__file__), "..", "crypto_data.csv")
+            backup_csv = os.path.abspath(backup_csv)
             try:
                 log(f"[ALLIUM-FALLBACK] Loading backup CSV for {symbol_norm}")
                 df = pd.read_csv(backup_csv)

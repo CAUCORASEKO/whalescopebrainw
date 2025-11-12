@@ -25,7 +25,7 @@ def plot_symbol(symbol):
         print(f"⚠️ No data found for {symbol}")
         return
 
-    # Aseguramos que las fechas se interpreten correctamente
+    # We ensure that dates are interpreted correctly
     df["activity_date"] = pd.to_datetime(df["activity_date"], errors="coerce")
 
     plt.figure(figsize=(10, 5))

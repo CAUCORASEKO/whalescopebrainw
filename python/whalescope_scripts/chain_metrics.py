@@ -43,7 +43,7 @@ def fetch_query_results(limit):
     if not run_id:
         raise RuntimeError(f"No run_id returned from Allium: {run}")
 
-    # 2. Poll hasta éxito
+    # 2. Poll to success
     url = f"https://api.allium.so/api/v1/developer/query-results/{run_id}"
     for _ in range(30):  # ~30s max
         r = session.get(url, timeout=30)
@@ -66,7 +66,7 @@ def get_gpt_insights(rows):
     import openai
     openai.api_key = OPENAI_KEY
 
-    # Resumimos un poco los datos para no pasar miles de filas
+    # We've summarized the data a bit to avoid having thousands of rows.
     preview = rows[:50] if len(rows) > 50 else rows
     text_input = f"Analyze blockchain activity data and summarize trends:\n{json.dumps(preview, indent=2)}"
 

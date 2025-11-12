@@ -11,7 +11,7 @@ if __name__ == "__main__":
     start = sys.argv[2]
     end = sys.argv[3]
 
-    # Construimos argv para ejecutar staking_analysis en modo CSV
+    # We built argv to run staking_analysis in CSV mode
     sys.argv = [
         "staking_analysis.py",
         "--chains", symbol,
@@ -20,7 +20,7 @@ if __name__ == "__main__":
         "--format", "csv"
     ]
 
-    # Capturar salida CSV
+    # Capture CSV output
     buffer = StringIO()
     old_stdout = sys.stdout
     sys.stdout = buffer
@@ -32,10 +32,10 @@ if __name__ == "__main__":
 
     csv_text = buffer.getvalue()
 
-    # Guardar en archivo temporal
+    # Save to temporary file
     tmp_file = tempfile.NamedTemporaryFile(delete=False, suffix=".csv")
     tmp_file.write(csv_text.encode("utf-8"))
     tmp_file.close()
 
-    # ✅ Imprimir ruta del archivo para Electron
+    # ✅ Print file path for Electron
     print(tmp_file.name)

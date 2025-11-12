@@ -9,10 +9,12 @@ import json
 import subprocess
 from datetime import datetime
 
-# Ruta a la DB
-DB_PATH = os.path.expanduser("~/Desktop/whalescope-desktop/whalescope/python/whalescope_scripts/whalescope.db")
+# Path to the database
+DB_PATH = os.path.expanduser(
+    "~/Desktop/whalescope-desktop/whalescope/python/whalescope_scripts/whalescope.db"
+)
 
-# Query SQL que usaremos en Allium
+# SQL query for Allium data
 ALLIUM_QUERY = """
 SELECT
   activity_date,
@@ -27,7 +29,7 @@ ORDER BY activity_date, chain;
 """
 
 def fetch_allium():
-    """Ejecuta staking_analysis.py para traer datos de Allium en JSON"""
+    """Run staking_analysis.py to retrieve Allium data in JSON format."""
     cmd = [
         "python", "staking_analysis.py",
         "--queries", ALLIUM_QUERY,
@@ -36,21 +38,22 @@ def fetch_allium():
     ]
     result = subprocess.run(cmd, capture_output=True, text=True)
     if result.returncode != 0:
-        print("❌ Error ejecutando staking_analysis.py")
+        print("❌ Error executing staking_analysis.py")
         print(result.stderr)
         return []
     try:
         data = json.loads(result.stdout)
         return data.get("results", [])
     except Exception as e:
-        print("❌ Error parseando JSON:", e)
+        print("❌ Error parsing JSON:", e)
         print(result.stdout[:500])
         return []
 
+
 def insert_into_sqlite(rows):
-    """Inserta los resultados en whalescope.db"""
+    """Insert Allium query results into whalescope.db."""
     if not os.path.exists(DB_PATH):
-        print(f"❌ No existe la DB en {DB_PATH}")
+        print(f"❌ Database not found at {DB_PATH}")
         return
 
     conn = sqlite3.connect(DB_PATH)
@@ -72,15 +75,16 @@ def insert_into_sqlite(rows):
             ))
             inserted += 1
         except Exception as e:
-            print("⚠️ Error insertando fila:", e, row)
+            print("⚠️ Error inserting row:", e, row)
 
     conn.commit()
     conn.close()
-    print(f"✅ Insertados {inserted} registros nuevos en {DB_PATH}")
+    print(f"✅ Inserted {inserted} new records into {DB_PATH}")
+
 
 if __name__ == "__main__":
-    print("🔎 Consultando Allium...")
+    print("🔎 Fetching data from Allium...")
     rows = fetch_allium()
-    print(f"📊 {len(rows)} registros obtenidos")
+    print(f"📊 Retrieved {len(rows)} records")
     if rows:
         insert_into_sqlite(rows)

@@ -2,10 +2,10 @@
 #!/usr/bin/env python3
 """
 analytics_loader.py
-Gestiona la base de datos marketbrain.db:
-- Crea las tablas necesarias
-- Guarda datos de staking y whale detector
-- Permite inicializar la DB manualmente
+Manages the marketbrain.db database:
+- Creates necessary tables
+- Saves staking and whale detector data
+- Allows manual initialization of the DB
 """
 
 import os
@@ -20,7 +20,7 @@ DB_PATH = os.path.join(os.path.dirname(__file__), "marketbrain.db")
 # ============================================================
 
 def init_db():
-    """Crea las tablas de marketbrain.db si no existen."""
+    """Create the tables in marketbrain.db if they don't already exist."""
     conn = sqlite3.connect(DB_PATH)
     cur = conn.cursor()
 
@@ -63,7 +63,7 @@ def init_db():
 # ============================================================
 
 def save_to_db(symbol: str, staking_table: list):
-    """Guarda staking_data en SQLite (convierte Timestamps y limpia duplicados)."""
+    """Save staking_data into SQLite (convert timestamps and remove duplicates)."""
     if not staking_table:
         print(f"[DB] No staking data to save for {symbol}")
         return
@@ -75,13 +75,13 @@ def save_to_db(symbol: str, staking_table: list):
     for row in staking_table:
         date_value = row.get("activity_date")
 
-        # 🔧 Normalizar fechas a string compatible con SQLite
+        # 🔧 Normalize dates into SQLite-compatible string format
         if isinstance(date_value, pd.Timestamp):
             date_value = date_value.to_pydatetime().strftime("%Y-%m-%d %H:%M:%S")
         elif isinstance(date_value, datetime):
             date_value = date_value.strftime("%Y-%m-%d %H:%M:%S")
         elif isinstance(date_value, (float, int)):
-            # timestamp UNIX
+            # UNIX timestamp
             date_value = datetime.fromtimestamp(date_value).strftime("%Y-%m-%d %H:%M:%S")
         elif not isinstance(date_value, str):
             date_value = str(date_value)
@@ -119,7 +119,7 @@ def save_to_db(symbol: str, staking_table: list):
 # ============================================================
 
 def save_whale_signals(symbol: str, signals: list):
-    """Guarda señales del Whale Detector."""
+    """Save whale detector signals into the database."""
     if not signals:
         print(f"[DB] No whale signals to save for {symbol}")
         return
@@ -151,7 +151,7 @@ def save_whale_signals(symbol: str, signals: list):
     print(f"[DB] ✅ Saved {len(signals)} whale signals for {symbol}")
 
 # ============================================================
-# TEST MANUAL
+# MANUAL TEST
 # ============================================================
 
 if __name__ == "__main__":

@@ -14,7 +14,7 @@ import plotly.graph_objects as go
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 FETCHER = os.path.join(BASE_DIR, "binance_market_fetcher.py")
-FONT_PATH = os.path.join(BASE_DIR, "DejaVuSans.ttf")
+FONT_PATH = os.path.join(BASE_DIR, "fonts", "DejaVuSans.ttf")
 
 def run_fetch(symbol, start, end):
     cmd = [sys.executable, FETCHER, symbol, "--start-date", start, "--end-date", end]
@@ -58,8 +58,8 @@ def generate_pdf(symbol, start, end, market):
     pdf.set_right_margin(10)
 
     # ✅ Fuente Unicode
-    pdf.add_font("DejaVu", "", FONT_PATH)
-    pdf.add_font("DejaVu", "B", FONT_PATH)
+    pdf.add_font("DejaVu", "", FONT_PATH, uni=True)
+    pdf.add_font("DejaVu", "B", FONT_PATH, uni=True)
 
     pdf.add_page()
 

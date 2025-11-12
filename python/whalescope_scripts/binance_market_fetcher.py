@@ -20,7 +20,7 @@ import pandas as pd
 import math
 
 import matplotlib
-matplotlib.use('Agg')  # ✅ necesario en Electron (sin UI)
+matplotlib.use('Agg')  # ✅ required in Electron (without UI)
 import matplotlib.pyplot as plt
 
 from reportlab.lib.pagesizes import A4
@@ -389,7 +389,7 @@ def fetch_binance_market(symbol, start_date, end_date):
         "values": df_flows["net_flow_usd"].tolist() if not df_flows.empty else []
     }
 
-    # ✅ Aquí activamos OpenAI
+    # ✅ Here we activate OpenAI
     insights = generate_ai_insights(symbol, phase, score)
 
 
@@ -417,7 +417,7 @@ def fetch_binance_market(symbol, start_date, end_date):
                 "fees": fees,
                 "smart_money_phase": phase,
                 "accumulation_score": score,
-                "insights": insights  # ✅ AI real ahora
+                "insights": insights  # ✅ AI now real
             }
         }
     })

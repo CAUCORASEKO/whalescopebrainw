@@ -26,7 +26,7 @@ def main(start_date=None, end_date=None):
     pca_result = perform_pca(start_date, end_date)
     regression_result = cross_sectional_regression(start_date, end_date)
     
-    # 🔹 Integra datos de Allium si la API está activa
+   # 🔹 Integrates Allium data if the API is active
     try:
         allium_data = get_allium_metrics(protocol="binance-staking")
     except Exception as e:

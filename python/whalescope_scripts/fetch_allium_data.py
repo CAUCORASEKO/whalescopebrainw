@@ -1,8 +1,9 @@
 #!/usr/bin/env python3
 """
 fetch_allium_data.py
-Actualiza automáticamente staking_data y whale_signals en marketbrain.db
-y deja un log de ejecución en fetch_allium.log
+Automatically updates staking_data and whale_signals in marketbrain.db
+and leaves an execution log in fetch_allium.log
+
 """
 
 import subprocess
@@ -24,7 +25,7 @@ LOG_PATH = BASE_PATH / "fetch_allium.log"
 # 🪵 UTILIDAD DE LOGGING
 # ===============================================
 def log(msg: str):
-    """Escribe mensaje en consola y archivo de log"""
+    """Writes message to console and log file"""
     timestamp = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     line = f"[{timestamp}] {msg}"
     print(line)
@@ -36,20 +37,20 @@ def log(msg: str):
 # ⚙️ FUNCIONES PRINCIPALES
 # ===============================================
 def run_cmd(args):
-    """Ejecuta un comando externo y muestra salida"""
-    log(f"Ejecutando comando: {' '.join(args)}")
+    """Execute an external command and display output"""
+    log(f"Executing command: {' '.join(args)}")
     result = subprocess.run(args, capture_output=True, text=True)
     if result.returncode != 0:
-        log(f"⚠️ Error ejecutando {' '.join(args)}:\n{result.stderr}")
+        log(f"⚠️ Error executing {' '.join(args)}:\n{result.stderr}")
     else:
-        log(f"✅ Comando completado correctamente.")
+        log(f"✅ Command completed successfully.")
     return result.returncode == 0
 
 
 def get_db_status():
-    """Obtiene fechas más recientes de staking_data"""
+    """Gets more recent dates from staking_data"""
     if not DB_PATH.exists():
-        log("⚠️ Base de datos no encontrada, se descargará todo desde cero.")
+        log("⚠️ Database not found, everything will be downloaded from scratch.")
         return [{"chain": c, "end_date": "2023-01-01"} for c in CHAINS]
 
     conn = sqlite3.connect(DB_PATH)
@@ -80,7 +81,7 @@ def get_db_status():
 
 
 def fetch_chain(chain, start_date, end_date):
-    """Descarga y actualiza staking_data"""
+    """Download and update staking_data"""
     log(f"🔎 Fetching {chain} desde {start_date} hasta {end_date}...")
     args = [
         "python", "staking_analysis.py",
@@ -93,11 +94,11 @@ def fetch_chain(chain, start_date, end_date):
 
 
 def update_whales():
-    """Ejecuta whales_detector.py para actualizar whale_signals"""
-    log("🐋 Actualizando señales de ballenas (whale_signals)...")
+    """Run whales_detector.py to update whale_signals"""
+    log("🐋 Updating whale signals...")
     args = ["python", "whales_detector.py"]
     run_cmd(args)
-    log("✅ whale_signals actualizado.")
+    log("✅ whale_signals updated.")
 
 
 # ===============================================
@@ -114,14 +115,14 @@ def main():
         end_date = entry["end_date"][:10] if entry.get("end_date") else "2023-01-01"
         next_day = (datetime.date.fromisoformat(end_date) + datetime.timedelta(days=1)).isoformat()
 
-        log(f"📊 {chain}: última fecha {end_date}, trayendo desde {next_day} hasta {today}")
+        log(f"📊 {chain}: last date {end_date}, bringing from {next_day} until {today}")
         fetch_chain(chain, next_day, today)
 
     if update_whales_flag:
         update_whales()
 
-    log("✅ Actualización completada. Ejecuta de nuevo MarketBrain Dashboard.")
-    log("🔚 --- FIN DE EJECUCIÓN ---\n")
+    log("✅ Update complete. Run MarketBrain Dashboard again.")
+    log("🔚 --- END OF EXECUTION ---\n")
 
 
 if __name__ == "__main__":

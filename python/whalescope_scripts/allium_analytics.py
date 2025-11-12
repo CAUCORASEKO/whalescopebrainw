@@ -8,10 +8,11 @@ from dotenv import load_dotenv
 load_dotenv()
 
 ALLIUM_API_KEY = os.getenv("ALLIUM_API_KEY")
-BASE_URL = "https://api.allium.so/api/v1"  # 👈 Ajustar si tu endpoint difiere
+BASE_URL = "https://api.allium.so/api/v1"  # 👈 Adjust if your endpoint differs
+
 
 def get_allium_metrics(protocol="binance-staking", limit=100):
-    """Obtiene métricas de Allium (por ejemplo TVL, yields o flujos on-chain)."""
+    """Fetch Allium metrics (e.g., TVL, yields, or on-chain flows)."""
     headers = {
         "accept": "application/json",
         "Authorization": f"Bearer {ALLIUM_API_KEY}"
@@ -41,11 +42,11 @@ def get_allium_metrics(protocol="binance-staking", limit=100):
 
 def main(start_date=None, end_date=None):
     """
-    Wrapper para ejecución desde Flask backend.
-    Ignora las fechas (por ahora) y devuelve métricas Allium en JSON.
+    Wrapper for execution from the Flask backend.
+    Currently ignores start/end dates and returns Allium metrics as JSON.
     """
     try:
-        # Ejecuta la función principal
+        # Execute the main function
         result = get_allium_metrics(protocol="binance-staking", limit=100)
         return result
     except Exception as e:
@@ -54,9 +55,8 @@ def main(start_date=None, end_date=None):
         return {"status": "error", "message": str(e)}
 
 
-
 def list_allium_protocols():
-    """Devuelve la lista completa de protocolos disponibles en Allium"""
+    """Return the full list of available protocols from Allium."""
     headers = {
         "accept": "application/json",
         "Authorization": f"Bearer {ALLIUM_API_KEY}"

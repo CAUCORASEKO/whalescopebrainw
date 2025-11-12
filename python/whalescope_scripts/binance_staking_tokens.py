@@ -41,5 +41,5 @@ BINANCE_STAKING_TOKENS = [
     {"symbol": "FDUSD", "name": "First Digital USD", "chain": "BNB Smart Chain"},
 ]
 
-# 🔹 Lista rápida de símbolos para validación en el fetcher
+# 🔹 Quick list of symbols for validation in the fetcher
 SUPPORTED_STAKING_TOKENS = [t["symbol"] for t in BINANCE_STAKING_TOKENS]
