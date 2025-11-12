@@ -18,16 +18,16 @@ Sovellus kehitettiin osana harjoittelua **Aalto-yliopiston talous- ja kauppatiet
 ---
 
 ## 🧠 Arkkitehtuuri
-
+```
 Electron (käyttöliittymä)
-│
-├── IPC / spawn()
-│
-└── Python Flask-backend
-├── whalescope_scripts/
-├── SQLite3-tietokanta
-└── REST API (localhost:5001)
-
+   │
+   ├── IPC / spawn()
+   │
+   └── Python Flask-backend
+         ├── whalescope_scripts/
+         ├── SQLite3-tietokanta
+         └── REST API (localhost:5001)
+```
 
 ---
 
@@ -38,20 +38,10 @@ Electron (käyttöliittymä)
 | ![Hallintapaneeli](docs/screenshot_dashboard.png) | ![MarketBrain](docs/screenshot_marketbrain.png) | ![Binance Polar](docs/screenshot_polar.png) |
 
 ### 📄 PDF-viennin esimerkki
-
 ![Export PDF](docs/screenshot_export_pdf.png)
 
-
 ---
 
-## 🧑‍💻 Kehittäjä
-**Claudio Valenzuela (CAUCO)**  
-- RASEKO – Tieto- ja viestintätekniikka (TVT), Turku  
-- Harjoittelu Aalto-yliopistossa, Talous- ja kauppatieteiden laitos  
-- Toiminimi (Tmi) Ohjelmistokehittäjä ja Data-analyytikko  
-- [LinkedIn](#) • [GitHub](#)
-
----
 ## ⚙️ Käyttöohjeet ja asennus
 
 ### 1️⃣ Vaatimukset
@@ -121,12 +111,20 @@ Tämän `.dmg`-tiedoston voi jakaa suoraan — se toimii millä tahansa Macilla 
 | `"Empty output from script"` | Varmista, että `python/`-kansio kopioitui oikein `Resources/`-hakemistoon |
 | macOS estää sovelluksen avaamisen | Klikkaa hiiren oikealla → “Avaa” → vahvista ensimmäinen käynnistys |
 
+---
+
+## 🧑‍💻 Kehittäjä
+
+**Claudio Valenzuela (CAUCO)**  
+- RASEKO – Tieto- ja viestintätekniikka (TVT), Turku  
+- Harjoittelu Aalto-yliopistossa, Talous- ja kauppatieteiden laitos  
+- Toiminimi (Tmi) Ohjelmistokehittäjä ja Data-analyytikko  
+
+🔗 **Linkit:**  
+[LinkedIn-profiili](https://www.linkedin.com/in/multimedia3d/)  
+[GitHub-profiili](https://github.com/CAUCORASEKO)
+
+---
 
 ## 📄 Lisenssi
 MIT-lisenssi © 2025 Claudio Valenzuela (CAUCO)
-
-
-
-
-
-

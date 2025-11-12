@@ -13,20 +13,21 @@ Developed as part of an academic internship at **Aalto University — Department
 - Visualization dashboards (Electron + Chart.js / Plotly)  
 - Python backend with Flask and Pandas  
 - Export to PDF / CSV reports  
-- Embedded Python runtime (no external Python installation required)
+- Embedded Python runtime (no external installation required)
 
 ---
 
 ## 🧠 Architecture Overview
+```
 Electron (frontend)
-│
-├── IPC / spawn()
-│
-└── Python Flask backend
-├── whalescope_scripts/
-├── SQLite3 database
-└── REST API (localhost:5001)
-
+   │
+   ├── IPC / spawn()
+   │
+   └── Python Flask backend
+         ├── whalescope_scripts/
+         ├── SQLite3 database
+         └── REST API (localhost:5001)
+```
 
 ---
 
@@ -37,30 +38,7 @@ Electron (frontend)
 | ![Dashboard](docs/screenshot_dashboard.png) | ![MarketBrain](docs/screenshot_marketbrain.png) | ![Polar](docs/screenshot_polar.png) |
 
 ### 📄 PDF Export Example
-
 ![Export PDF](docs/screenshot_export_pdf.png)
-
-
----
-
-## 🧰 Tech Stack
-
-| Layer | Technologies |
-|-------|---------------|
-| Frontend | Electron, Node.js, Chart.js, Plotly |
-| Backend | Python 3.11, Flask, Pandas, Matplotlib |
-| Packaging | electron-builder, embedded Python |
-| Platform | macOS (.dmg), cross-compatible |
-
----
-
-## 🧑‍💻 Developer
-
-**Claudio Valenzuela (CAUCO)**  
-- 🇫🇮 Student — Tieto- ja viestintätekniikka (TVT), RASEKO, Turku  
-- Internship — Aalto University, Dept. of Economics and Commerce  
-- Toiminimi (Tmi) Developer | Data & Software Analytics  
-- [LinkedIn](#) • [GitHub](#)
 
 ---
 
@@ -133,6 +111,20 @@ You can distribute this `.dmg` directly — it runs on any Mac **without requiri
 | `"Empty output from script"` | Check that the `python/` folder was correctly copied inside `Resources/` |
 | macOS blocks app (developer not verified) | Right-click → “Open” → confirm the first launch |
 
+---
+
+## 🧑‍💻 Developer
+
+**Claudio Valenzuela (CAUCO)**  
+- 🇫🇮 Student — Tieto- ja viestintätekniikka (TVT), RASEKO, Turku  
+- Internship — Aalto University, Dept. of Economics and Commerce  
+- Toiminimi (Tmi) Developer | Data & Software Analytics  
+
+🔗 **Links:**  
+[LinkedIn Profile](https://www.linkedin.com/in/multimedia3d/)  
+[GitHub Profile](https://github.com/CAUCORASEKO)
+
+---
 
 ## 📄 License
 MIT License © 2025 Claudio Valenzuela (CAUCO)
