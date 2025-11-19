@@ -1,4 +1,4 @@
-# 🎤 WhaleScope Desktop — Internship Presentation (Aalto University)
+# 🎤 WhaleScope Desktop — Internship Presentation (Aalto University) [🇫🇮 Lue tämä suomeksi](PRESENTATION_FI.md)
 
 **Author:** Claudio Valenzuela (CAUCO)  
 **Study Program:** Tieto- ja viestintätekniikka (TVT), RASEKO — Turku, Finland  

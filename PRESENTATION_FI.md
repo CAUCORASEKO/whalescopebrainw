@@ -1,4 +1,4 @@
-# 🎤 WhaleScope Desktop — Harjoittelun Esittely (Aalto-yliopisto)
+# 🎤 WhaleScope Desktop — Harjoittelun Esittely (Aalto-yliopisto) [🇬🇧 Read this in English](PRESENTATION_EN.md)
 
 **Tekijä:** Claudio Valenzuela (CAUCO)  
 **Koulutus:** Tieto- ja viestintätekniikka (TVT), RASEKO — Turku  

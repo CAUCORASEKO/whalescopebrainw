@@ -6,6 +6,12 @@
 Sovellus kehitettiin osana harjoittelua **Aalto-yliopiston talous- ja kauppatieteiden laitoksella**  
 (Opiskelija: Tieto- ja viestintätekniikka (TVT), RASEKO, Turku)
 
+## 📑 Esitykset
+
+- 🇫🇮 **Suomenkielinen esitys:** [PRESENTATION_FI.md](PRESENTATION_FI.md)  
+- 🇬🇧 **Englanninkielinen esitys:** [PRESENTATION_EN.md](PRESENTATION_EN.md)
+
+
 ---
 
 ## 🚀 Ominaisuudet

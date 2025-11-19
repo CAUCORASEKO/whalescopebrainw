@@ -6,6 +6,11 @@
 Developed as part of an academic internship at **Aalto University — Department of Economics and Commerce**  
 (Student: Tieto- ja viestintätekniikka (TVT), RASEKO, Turku – Finland)
 
+## 📑 Presentations
+
+- 🇬🇧 **English Presentation:** [PRESENTATION_EN.md](PRESENTATION_EN.md)  
+- 🇫🇮 **Finnish Presentation:** [PRESENTATION_FI.md](PRESENTATION_FI.md)
+
 ---
 
 ## 🚀 Features
