@@ -18,7 +18,12 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+
+  <!-- FLATPICKR (local) -->
+  <link rel="stylesheet" href="./node_modules/flatpickr/dist/flatpickr.min.css">
+  <script src="./node_modules/flatpickr/dist/flatpickr.min.js"></script>
 </head>
+
 <body>
   <h1>WhaleScope</h1>
 
@@ -63,331 +68,232 @@
     <p id="config-status" style="display:none; font-weight:600; margin-top:10px;"></p>
   </div>
 
-  <!-- ================= MAIN APP (hidden until config saved) ================= -->
-  <div id="main-app" style="display:none;">
-    <!-- Navigation menu -->
-    <div id="navButtons">
-        <!-- <button class="navBtn" data-section="eth-section" onclick="window.showSection('eth')">ETH</button> -->
-      <button class="navBtn" data-section="marketbrain-section" onclick="window.showSection('marketbrain')">MarketBrain</button>
-    </div>
+<!-- ================= MAIN APP (hidden until config saved) ================= -->
+<div id="main-app" style="display:none;">
 
-    <!--
-================= ETH SECTION =================
+  <!-- Navigation menu -->
+  <div id="navButtons">
+    <button class="navBtn" data-section="marketbrain-section" onclick="window.showSection('marketbrain')">
+      MarketBrain
+    </button>
 
-<div id="eth-section" class="section">
-  <h2>ETH Analytics</h2>
-  <div id="eth-loading" class="loading">Loading...</div>
-  <div id="eth-status"></div>
-
-  <div id="eth-filters">
-    <label for="eth-startDate">Start Date:</label>
-    <input id="eth-startDate" type="date" />
-    <label for="eth-endDate">End Date:</label>
-    <input id="eth-endDate" type="date" />
-    <button id="eth-refreshBtn" class="filter-btn">Refresh Data</button>
-    <button id="eth-exportCsvBtn" class="filter-btn">Export CSV</button>
-    <button id="eth-exportPdfBtn" class="filter-btn">Export PDF</button>
+    <!-- ⭐ Update API Keys -->
+    <button id="btnUpdateApiKeys" class="navBtn update-api-btn">
+      Update API Keys
+    </button>
   </div>
 
-  <div class="flex-row">
-    <div class="card card-flex-large">
-      <h3>Price Trend (Historical Data)</h3>
-      <div id="eth-priceTrendError" class="error"></div>
-      <div class="chart-wrapper">
-        <div id="eth-priceTrendChart"></div>
+  <!-- ================================================
+       MARKETBRAIN DASHBOARD
+  ==================================================== -->
+  <div id="marketbrain-section" class="section">
+
+    <h2>MarketBrain Dashboard</h2>
+
+    <!-- Filters -->
+    <div class="filters-container" id="marketbrain-filters">
+
+      <div id="marketbrain-symbol-wrapper">
+        <input type="text" id="marketbrain-symbols" value="ETH">
       </div>
+
+      <div id="marketbrain-date-controls" style="display:none;">
+        <input type="date" id="marketbrain-start" lang="en">
+        <input type="date" id="marketbrain-end" lang="en">
+      </div>
+
+      <button id="marketbrain-loadBtn" class="filter-btn accent">Load Data</button>
+      <button id="marketbrain-refreshBtn" class="filter-btn">Refresh</button>
+      <button id="marketbrain-exportCsvBtn" class="filter-btn">Export CSV</button>
+      <button id="marketbrain-exportPdfBtn" class="filter-btn">Export PDF</button>
+
     </div>
 
-    <div class="card">
-      <h3>Market Stats (Updated: <span id="eth-lastUpdated">N/A</span>)</h3>
-      <div class="table-container">
-        <table>
-          <thead><tr><th>Metric</th><th>Value</th></tr></thead>
-          <tbody id="eth-marketStatsTableBody">
-            <tr><td colspan="2" class="centered-cell">Loading data...</td></tr>
-          </tbody>
-        </table>
-      </div>
+    <!-- Subtabs -->
+    <div class="subtabs">
+      <button id="btnAlliumData" class="filter-btn active">Allium On-chain Data</button>
+      <button id="btnBinanceMarket" class="filter-btn">Binance Market</button>
+      <button id="btnBinancePolar" class="filter-btn">Binance Polar</button>
     </div>
 
-    <div class="card">
-      <h3>Performance Metrics</h3>
-      <div class="table-container">
-        <table>
-          <thead><tr><th>Period</th><th>Change (%)</th></tr></thead>
-          <tbody id="eth-performanceTableBody">
-            <tr><td colspan="2" class="centered-cell">Loading data...</td></tr>
-          </tbody>
-        </table>
-      </div>
-    </div>
-  </div>
+    <!-- =======================
+         Allium Data View
+    ======================= -->
+    <div id="marketbrain-allium-view">
 
-  <div class="flex-row">
-    <div class="card card-flex-large">
-      <h3>Whale Activity (Top Flows)</h3>
-      <div class="table-container whale-scroll">
-        <table>
+      <div class="kpi-grid">
+        <div class="kpi-card"><h3>Total Stake USD</h3><p id="kpi-total-stake">–</p></div>
+        <div class="kpi-card"><h3>Active Stake USD</h3><p id="kpi-active-stake">–</p></div>
+        <div class="kpi-card"><h3>% Active</h3><p id="kpi-pct-active">–</p></div>
+        <div class="kpi-card"><h3>Avg Price (USD)</h3><p id="kpi-price">–</p></div>
+      </div>
+
+      <div id="marketbrain-charts" class="grid-2x2"></div>
+
+      <div class="table-container marketbrain-scroll">
+        <table class="styled-table">
           <thead>
             <tr>
-              <th>Date & Time</th>
-              <th>Input (USD)</th>
-              <th>Output (USD)</th>
-              <th>Status</th>
+              <th>Symbol</th>
+              <th>Date</th>
+              <th>Active Stake (USD)</th>
+              <th>Total Stake (USD)</th>
+              <th>% Active</th>
+              <th>% Circ. Staked</th>
+              <th>Net Flow</th>
+              <th>Deposits</th>
+              <th>Withdrawals</th>
             </tr>
           </thead>
-          <tbody id="eth-topFlowsTableBody">
-            <tr><td colspan="4" class="centered-cell">Loading data...</td></tr>
+          <tbody id="marketbrain-tableBody">
+            <tr><td colspan="9" class="centered-cell">No data</td></tr>
           </tbody>
         </table>
       </div>
 
-      <div id="ethWhaleFlowsChart" class="whale-chart" style="height:400px; margin-top:20px;"></div>
-    </div>
-  </div>
-
-  <div class="flex-row">
-    <div class="card card-flex-large">
-      <h3>Transaction Fees</h3>
-      <div id="eth-feesError" class="error"></div>
-      <div class="chart-wrapper">
-        <div id="eth-feesChart"></div>
-      </div>
-    </div>
-  </div>
-
-  <div class="flex-row">
-    <div class="analysis-card">
-      <h3>On-chain Insights</h3>
-      <div id="ethInsights" class="insights-body">
-        <p class="centered-cell">Loading insights...</p>
-      </div>
-    </div>
-  </div>
-</div>
-
-END ETH
--->
-    
-    <!-- ================================================
-     MARKETBRAIN DASHBOARD
-================================================= -->
-<div id="marketbrain-section" class="section">
-
-  <h2>MarketBrain Dashboard</h2>
-
-  <!-- Filters -->
-  <div class="filters-container" id="marketbrain-filters">
-
-    <input type="text" id="marketbrain-symbols" value="ETH">
-
-    <!-- ✅ Date inputs envueltos para poder ocultar -->
-    <div id="marketbrain-date-controls">
-      <input type="date" id="marketbrain-start">
-      <input type="date" id="marketbrain-end">
-    </div>
-
-    <button id="marketbrain-loadBtn" class="filter-btn accent">Load Data</button>
-    <button id="marketbrain-refreshBtn" class="filter-btn">Refresh</button>
-    <button id="marketbrain-exportCsvBtn" class="filter-btn">Export CSV</button>
-    <button id="marketbrain-exportPdfBtn" class="filter-btn">Export PDF</button>
-
-  </div>
-
-  <!-- Subtabs -->
-  <div class="subtabs">
-    <button id="btnAlliumData" class="filter-btn active">Allium On-chain Data</button>
-    <button id="btnBinanceMarket" class="filter-btn">Binance Market</button>
-    <button id="btnBinancePolar" class="filter-btn">Binance Polar</button>
-  </div>
-
-<!-- =======================
-     Allium Data View
-======================= -->
-<div id="marketbrain-allium-view">
-
-  <!-- KPIs (Allium only) -->
-  <div class="kpi-grid">
-    <div class="kpi-card"><h3>Total Stake USD</h3><p id="kpi-total-stake">–</p></div>
-    <div class="kpi-card"><h3>Active Stake USD</h3><p id="kpi-active-stake">–</p></div>
-    <div class="kpi-card"><h3>% Active</h3><p id="kpi-pct-active">–</p></div>
-    <div class="kpi-card"><h3>Avg Price (USD)</h3><p id="kpi-price">–</p></div>
-  </div>
-
-  <!-- Charts -->
-  <div id="marketbrain-charts" class="grid-2x2"></div>
-
-  <!-- Staking Table -->
-  <div class="table-container marketbrain-scroll">
-    <table class="styled-table">
-      <thead>
-        <tr>
-          <th>Symbol</th>
-          <th>Date</th>
-          <th>Active Stake (USD)</th>
-          <th>Total Stake (USD)</th>
-          <th>% Active</th>
-          <th>% Circ. Staked</th>
-          <th>Net Flow</th>
-          <th>Deposits</th>
-          <th>Withdrawals</th>
-        </tr>
-      </thead>
-      <tbody id="marketbrain-tableBody">
-        <tr><td colspan="9" class="centered-cell">No data</td></tr>
-      </tbody>
-    </table>
-  </div>
-
-  <!-- AI Insights -->
-  <div class="analysis-card">
-    <h3>AI Insights</h3>
-    <div id="marketbrain-insights" class="insights-body markdown-view">
-      <p class="centered-cell">No insights yet.</p>
-    </div>
-  </div>
-
-  <!-- Loading spinner -->
-  <div id="marketbrain-loading" class="loading" style="display:none;">
-    <p>Loading MarketBrain data...</p>
-  </div>
-
-</div>    
-
-<!-- =======================
-     Binance Market View
-======================= -->
-<div id="marketbrain-binance-market" style="display:none;">
-
-  <h2>Binance Market Analytics</h2>
-  <!-- ✅ Botones de Exportar (Nuevo) -->
-   
-
-
-  <div id="bm-loading" class="loading">Loading...</div>
-  <div id="bm-status"></div>
-
-  <!-- Charts & Stats -->
-  <div class="flex-row">
-    <div class="card card-flex-large">
-      <h3>Price Trend (Historical Data)</h3>
-      <div id="bm-priceTrendError" class="error"></div>
-      <div class="chart-wrapper">
-        <div id="bm-priceTrendChart"></div>
-      </div>
-    </div>
-
-    <div class="card">
-      <h3>Market Stats (Updated: <span id="bm-lastUpdated">N/A</span>)</h3>
-      <div class="table-container">
-        <table>
-          <thead><tr><th>Metric</th><th>Value</th></tr></thead>
-          <tbody id="bm-marketStatsTableBody">
-            <tr><td colspan="2" class="centered-cell">Loading data...</td></tr>
-          </tbody>
-        </table>
-      </div>
-    </div>
-
-    <div class="card">
-      <h3>Performance Metrics</h3>
-      <div class="table-container">
-        <table>
-          <thead><tr><th>Period</th><th>Change (%)</th></tr></thead>
-          <tbody id="bm-performanceTableBody">
-            <tr><td colspan="2" class="centered-cell">Loading data...</td></tr>
-          </tbody>
-        </table>
-      </div>
-    </div>
-  </div>
-
-  <!-- Whale Activity -->
-  <div class="flex-row">
-    <div class="card card-flex-large">
-      <h3>Whale Activity (Top Flows)</h3>
-      <div class="table-container whale-scroll">
-        <table>
-          <thead>
-            <tr>
-              <th>Date & Time</th>
-              <th>Input (USD)</th>
-              <th>Output (USD)</th>
-              <th>Status</th>
-            </tr>
-          </thead>
-          <tbody id="bm-topFlowsTableBody">
-            <tr><td colspan="4" class="centered-cell">Loading data...</td></tr>
-          </tbody>
-        </table>
+      <div class="analysis-card">
+        <h3>AI Insights</h3>
+        <div id="marketbrain-insights" class="insights-body markdown-view">
+          <p class="centered-cell">No insights yet.</p>
+        </div>
       </div>
 
-      <div id="bm-whaleFlowsChart" class="whale-chart" style="height:400px; margin-top:20px;"></div>
-    </div>
-  </div>
-
-  <!-- Transaction Fees -->
-  <div class="flex-row">
-    <div class="card card-flex-large">
-      <h3>Transaction Fees</h3>
-      <div id="bm-feesError" class="error"></div>
-      <div class="chart-wrapper">
-        <div id="bm-feesChart"></div>
+      <div id="marketbrain-loading" class="loading" style="display:none;">
+        <p>Loading MarketBrain data...</p>
       </div>
+
     </div>
-  </div>
 
-  <!-- Insights -->
-  <div class="flex-row">
-    <div class="analysis-card">
-      <h3>Market Insights</h3>
-      <div id="bm-insights" class="insights-body">
-        <p class="centered-cell">Loading insights...</p>
-      </div>
-    </div>
-  </div>
+    <!-- =======================
+         Binance Market View
+    ======================= -->
+    <div id="marketbrain-binance-market" style="display:none;">
 
-</div> <!-- ✅ cierre correcto -->
+      <h2>Binance Market Analytics</h2>
 
-      <!-- =======================
-           Binance Polar View
-      ======================= -->
-      <div id="marketbrain-binance-polar" style="display:none;">
-        <h3>Binance Polar Rotation Map</h3>
+      <div id="bm-loading" class="loading">Loading...</div>
+      <div id="bm-status"></div>
 
-        <div class="controls-row" style="margin-bottom:10px;">
-          <label>Sort:</label>
-          <select id="binance_polar-order">
-            <option value="none">None</option>
-            <option value="ascending">Ascending</option>
-            <option value="descending">Descending</option>
-          </select>
-
-          <button id="binance_polar-daily" class="subtab-btn">Daily</button>
-          <button id="binance_polar-weekly" class="subtab-btn">Weekly</button>
-          <button id="binance_polar-monthly" class="subtab-btn">Monthly</button>
-          <button id="binance_polar-yearly" class="subtab-btn">Yearly</button>
+      <div class="flex-row">
+        <div class="card card-flex-large">
+          <h3>Price Trend (Historical Data)</h3>
+          <div id="bm-priceTrendError" class="error"></div>
+          <div class="chart-wrapper">
+            <div id="bm-priceTrendChart"></div>
+          </div>
         </div>
 
-        <div id="binancePolarChart" style="height:500px; margin-top:10px;"></div>
-
-        <div class="table-container marketbrain-scroll" style="margin-top:20px;">
-          <table class="styled-table">
-            <thead>
-              <tr><th>Symbol</th><th>% Dominance</th><th>Volume (USD)</th><th>Volatility Δ</th></tr>
-            </thead>
-            <tbody id="binance_polar-tableBody"></tbody>
-          </table>
+        <div class="card">
+          <h3>Market Stats (Updated: <span id="bm-lastUpdated">N/A</span>)</h3>
+          <div class="table-container">
+            <table>
+              <thead><tr><th>Metric</th><th>Value</th></tr></thead>
+              <tbody id="bm-marketStatsTableBody">
+                <tr><td colspan="2" class="centered-cell">Loading data...</td></tr>
+              </tbody>
+            </table>
+          </div>
         </div>
 
+        <div class="card">
+          <h3>Performance Metrics</h3>
+          <div class="table-container">
+            <table>
+              <thead><tr><th>Period</th><th>Change (%)</th></tr></thead>
+              <tbody id="bm-performanceTableBody">
+                <tr><td colspan="2" class="centered-cell">Loading data...</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <div class="flex-row">
+        <div class="card card-flex-large">
+          <h3>Whale Activity (Top Flows)</h3>
+          <div class="table-container whale-scroll">
+            <table>
+              <thead>
+                <tr>
+                  <th>Date & Time</th>
+                  <th>Input (USD)</th>
+                  <th>Output (USD)</th>
+                  <th>Status</th>
+                </tr>
+              </thead>
+              <tbody id="bm-topFlowsTableBody">
+                <tr><td colspan="4" class="centered-cell">Loading data...</td></tr>
+              </tbody>
+            </table>
+          </div>
+
+          <div id="bm-whaleFlowsChart" class="whale-chart" style="height:400px; margin-top:20px;"></div>
+        </div>
+      </div>
+
+      <div class="flex-row">
+        <div class="card card-flex-large">
+          <h3>Transaction Fees</h3>
+          <div id="bm-feesError" class="error"></div>
+          <div class="chart-wrapper">
+            <div id="bm-feesChart"></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="flex-row">
         <div class="analysis-card">
-          <h3>Insights</h3>
-          <div id="binance_polar-insights" class="insights-body"></div>
+          <h3>Market Insights</h3>
+          <div id="bm-insights" class="insights-body">
+            <p class="centered-cell">Loading insights...</p>
+          </div>
         </div>
       </div>
-    </div>
-    <!-- END MARKETBRAIN -->
-  </div>
+
+    </div> <!-- END Binance Market -->
+
+    <!-- =======================
+         Binance Polar View
+    ======================= -->
+    <div id="marketbrain-binance-polar" style="display:none;">
+      <h3>Binance Polar Rotation Map</h3>
+
+      <div class="controls-row" style="margin-bottom:10px;">
+        <label>Sort:</label>
+        <select id="binance_polar-order">
+          <option value="none">None</option>
+          <option value="ascending">Ascending</option>
+          <option value="descending">Descending</option>
+        </select>
+
+        <button id="binance_polar-daily" class="subtab-btn">Daily</button>
+        <button id="binance_polar-weekly" class="subtab-btn">Weekly</button>
+        <button id="binance_polar-monthly" class="subtab-btn">Monthly</button>
+        <button id="binance_polar-yearly" class="subtab-btn">Yearly</button>
+      </div>
+
+      <div id="binancePolarChart" style="height:500px; margin-top:10px;"></div>
+
+      <div class="table-container marketbrain-scroll" style="margin-top:20px;">
+        <table class="styled-table">
+          <thead>
+            <tr><th>Symbol</th><th>% Dominance</th><th>Volume (USD)</th><th>Volatility Δ</th></tr>
+          </thead>
+          <tbody id="binance_polar-tableBody"></tbody>
+        </table>
+      </div>
+
+      <div class="analysis-card">
+        <h3>Insights</h3>
+        <div id="binance_polar-insights" class="insights-body"></div>
+      </div>
+
+    </div> <!-- END Binance Polar -->
+
+  </div> <!-- END marketbrain-section -->
+
+</div> <!-- END main-app -->
+
 
   <!-- ================= JS ================= -->
   <script>

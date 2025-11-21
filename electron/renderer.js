@@ -65,62 +65,126 @@ document.addEventListener('DOMContentLoaded', async () => {
   setDefaultDates('eth-');
 
   // ---------- Restore Config ----------
-const saved = localStorage.getItem('whalescopeConfig');
-if (saved) {
-  const parsed = JSON.parse(saved);
-  if (parsed.BINANCE_API_KEY && parsed.BINANCE_API_SECRET) {
-    console.log('[Renderer] Restored API keys');
-    await window.electronAPI.saveApiKeys(parsed);
-    configSection.style.display = 'none';
-    mainApp.style.display = 'block';
-    window.showSection('marketbrain'); // ✅ dejamos esto
-  } else {
-    localStorage.removeItem('whalescopeConfig');
+  const saved = localStorage.getItem('whalescopeConfig');
+  if (saved) {
+    const parsed = JSON.parse(saved);
+    if (parsed.BINANCE_API_KEY && parsed.BINANCE_API_SECRET) {
+      console.log('[Renderer] Restored API keys');
+      await window.electronAPI.saveApiKeys(parsed);
+      configSection.style.display = 'none';
+      mainApp.style.display = 'block';
+      window.showSection('marketbrain'); // ✅ dejamos esto
+    } else {
+      localStorage.removeItem('whalescopeConfig');
+    }
   }
-}
 
   // ---------- Save New Config ----------
-if (form) {
-  form.addEventListener('submit', async (e) => {
-    e.preventDefault();
+  if (form) {
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
 
-    const cfg = {
-      BINANCE_API_KEY: document.getElementById('apiKey').value.trim(),
-      BINANCE_API_SECRET: document.getElementById('apiSecret').value.trim(),
-      ARKHAM_API_KEY: document.getElementById('arkhamKey').value.trim(),
-      CMC_API_KEY: document.getElementById('cmcKey').value.trim(),
-      ALLIUM_API_KEY: document.getElementById('alliumKey').value.trim(),
-      OPENAI_API_KEY: document.getElementById('openaiKey').value.trim(),
-      COINGECKO_API_KEY: document.getElementById('coingeckoKey')?.value.trim() || ''
-    };
+      const cfg = {
+        BINANCE_API_KEY: document.getElementById('apiKey').value.trim(),
+        BINANCE_API_SECRET: document.getElementById('apiSecret').value.trim(),
+        ARKHAM_API_KEY: document.getElementById('arkhamKey').value.trim(),
+        CMC_API_KEY: document.getElementById('cmcKey').value.trim(),
+        ALLIUM_API_KEY: document.getElementById('alliumKey').value.trim(),
+        OPENAI_API_KEY: document.getElementById('openaiKey').value.trim(),
+        COINGECKO_API_KEY: document.getElementById('coingeckoKey')?.value.trim() || ''
+      };
 
-    if (!cfg.BINANCE_API_KEY || !cfg.BINANCE_API_SECRET) {
-      alert('Please enter Binance API keys');
-      return;
-    }
+      if (!cfg.BINANCE_API_KEY || !cfg.BINANCE_API_SECRET) {
+        alert('Please enter Binance API keys');
+        return;
+      }
 
-    // Save config
-    localStorage.setItem('whalescopeConfig', JSON.stringify(cfg));
-    await window.electronAPI.saveApiKeys(cfg);
+      localStorage.setItem('whalescopeConfig', JSON.stringify(cfg));
+      await window.electronAPI.saveApiKeys(cfg);
 
-    // Show app
-    configSection.style.display = 'none';
-    mainApp.style.display = 'block';
+      configSection.style.display = 'none';
+      mainApp.style.display = 'block';
+      window.showSection('marketbrain');
+    });
+  }
 
-    // ✅ Directo a MarketBrain (sin loadBitcoin)
-    window.showSection('marketbrain');
-  });
-}
+// ---------- Refresh Buttons ----------
+const btcRefresh = document.getElementById('refreshBtn');
+if (btcRefresh) btcRefresh.addEventListener('click', loadBitcoin);
 
-  // ---------- Refresh Buttons ----------
-  const btcRefresh = document.getElementById('refreshBtn');
-  if (btcRefresh) btcRefresh.addEventListener('click', loadBitcoin);
+const ethRefresh = document.getElementById('eth-refreshBtn');
+if (ethRefresh) ethRefresh.addEventListener('click', loadEth);
 
-  const ethRefresh = document.getElementById('eth-refreshBtn');
-  if (ethRefresh) ethRefresh.addEventListener('click', loadEth);
+
+// =========================
+// UPDATE API KEYS BUTTON
+// =========================
+document.getElementById("btnUpdateApiKeys")?.addEventListener("click", () => {
+  console.log("[UI] Update API Keys clicked");
+
+  const config = document.getElementById("config-section");
+  const main = document.getElementById("main-app");
+
+  // 1️⃣ Mostrar panel de configuración
+  config.classList.add("active");
+  main.classList.remove("active");
+
+  config.style.display = "block";
+  main.style.display = "none";
+
+  // 2️⃣ Cargar claves actuales en el formulario
+  const saved = JSON.parse(localStorage.getItem("whalescopeConfig") || "{}");
+
+  document.getElementById("apiKey").value       = saved.BINANCE_API_KEY || "";
+  document.getElementById("apiSecret").value    = saved.BINANCE_API_SECRET || "";
+  document.getElementById("coingeckoKey").value = saved.COINGECKO_API_KEY || "";
+  document.getElementById("arkhamKey").value    = saved.ARKHAM_API_KEY || "";
+  document.getElementById("cmcKey").value       = saved.CMC_API_KEY || "";
+  document.getElementById("alliumKey").value    = saved.ALLIUM_API_KEY || "";
+  document.getElementById("openaiKey").value    = saved.OPENAI_API_KEY || "";
+
+  // 3️⃣ Avisar al usuario
+  const status = document.getElementById("config-status");
+  if (status) {
+    status.style.display = "block";
+    status.textContent = "You can modify any API key and leave others unchanged.";
+  }
+
+  // 4️⃣ Detener backend (si existe)
+  if (window.electronAPI?.stopBackend) {
+      window.electronAPI.stopBackend();
+  }
 });
 
 
+
+
+// =========================================================
+// ADD FLATPICKR (FORCE ENGLISH DATE PICKERS)
+// =========================================================
+function setupEnglishDatePickers() {
+  const opts = {
+    dateFormat: "Y-m-d",
+    locale: "en",
+    disableMobile: true
+  };
+
+  // MarketBrain
+  flatpickr("#marketbrain-start", opts);
+  flatpickr("#marketbrain-end", opts);
+
+  // ETH dashboard
+  flatpickr("#eth-startDate", opts);
+  flatpickr("#eth-endDate", opts);
+
+  // General fallback
+  flatpickr('input[type="date"]', opts);
+}
+
+// Ejecutar pickers
+setupEnglishDatePickers();
+
+}); // <-- ESTA CIERRA EL DOMContentLoaded PRINCIPAL (Correcto)
 
 // =========================================================
 // DATA LOADERS

@@ -17,8 +17,8 @@ const apiKeysPath = path.join(app.getPath("userData"), "api_keys.json");
 // 🟡 DEV → carpeta del proyecto
 // 🔵 DMG → pyapp dentro del .app
 const projectRoot = isDev
-  ? path.resolve(__dirname, "..", "python")
-  : path.join(process.resourcesPath, "python"); // ✅ PROD corregido
+  ? path.resolve(__dirname, "..", "pyapp")   // ← 💯 correcto
+  : path.join(process.resourcesPath, "python"); 
 
 // 🐍 Python interpreter
 const pythonPath = isDev

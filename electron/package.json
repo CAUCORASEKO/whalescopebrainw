@@ -5,54 +5,49 @@
   "main": "main.js",
   "author": "WhaleScope",
   "license": "MIT",
-
   "scripts": {
     "start": "electron .",
     "dist:intel": "electron-builder --mac --x64",
     "dist:arm": "electron-builder --mac --arm64",
     "dist": "electron-builder --mac"
   },
-
   "build": {
     "appId": "com.whalescope.desktop",
     "productName": "WhaleScope",
-
     "directories": {
       "output": "dist",
       "buildResources": "build"
     },
-
     "files": [
       "**/*",
       "!**/.venv/**",
       "!**/venv/**",
       "!**/__pycache__/**"
     ],
-
     "extraResources": [
       {
         "from": "../pyapp/",
         "to": "python/",
-        "filter": ["**/*"]
+        "filter": [
+          "**/*"
+        ]
       }
-      
     ],
-
     "afterPack": "afterPackFix.js",
-
     "mac": {
       "category": "public.app-category.finance",
-      "target": ["dmg"]
+      "target": [
+        "dmg"
+      ]
     }
   },
-
   "dependencies": {
     "chart.js": "^4.5.0",
     "dotenv": "^17.2.1",
+    "flatpickr": "^4.6.13",
     "level": "^10.0.0",
     "plotly.js": "^3.1.0"
   },
-
   "devDependencies": {
     "electron": "^37.3.1",
     "electron-builder": "^26.0.12"

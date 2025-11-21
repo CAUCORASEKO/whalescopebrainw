@@ -307,6 +307,10 @@ def export_pdf(symbol, df_prices, df_flows, whales_exchange, phase, score, insig
 
 def fetch_binance_market(symbol, start_date, end_date):
     symbol = symbol.upper()
+
+    # ================================
+    # 1. DEFAULT DATES ONLY IF BLANK
+    # ================================
     if not start_date:
         start_date = (datetime.utcnow() - timedelta(days=30)).strftime("%Y-%m-%d")
     if not end_date:
@@ -314,7 +318,9 @@ def fetch_binance_market(symbol, start_date, end_date):
 
     s_ts, e_ts = to_ts_range(start_date, end_date)
 
-    # --- OHLCV (para precio) ---
+    # ================================
+    # 2. FETCH OHLCV FROM BINANCE
+    # ================================
     klines = make_request(f"{BINANCE_API_URL}/api/v3/klines", {
         "symbol": f"{symbol}USDT",
         "interval": "1d",
@@ -323,6 +329,32 @@ def fetch_binance_market(symbol, start_date, end_date):
         "limit": 1000
     }) or []
 
+    # ============================================================
+    # 🚫 FIX: If NO data in that date range → return NO_DATA CLEANLY
+    # ============================================================
+    if not klines:
+        return {
+            "error": "NO_DATA",
+            "message": f"No Binance OHLC data for {symbol} from {start_date} to {end_date}",
+            "results": {
+                symbol: {
+                    "markets": {},
+                    "performance": {},
+                    "candles": {"dates": []},
+                    "whales_table": [],
+                    "whales_combined": [],
+                    "netflow": {"dates": [], "values": []},
+                    "fees": {"dates": [], "values": []},
+                    "smart_money_phase": "No Data",
+                    "accumulation_score": 0,
+                    "insights": "Not enough data available for analysis."
+                }
+            }
+        }
+
+    # ================================
+    # 3. PARSE OHLC DATA
+    # ================================
     hist = {
         "dates": [datetime.utcfromtimestamp(e[0]/1000).strftime("%Y-%m-%d") for e in klines],
         "open": [float(e[1]) for e in klines],
@@ -331,14 +363,17 @@ def fetch_binance_market(symbol, start_date, end_date):
         "close": [float(e[4]) for e in klines],
         "volume": [float(e[5]) for e in klines]
     }
+
     df_prices = pd.DataFrame(hist)
     price = hist["close"][-1] if hist["close"] else None
 
-    # ✅ Whale Detection (matching ETH logic)
+    # ===========================================
+    # 4. WHALE DETECTION (Filtered to date range)
+    # ===========================================
     df_price_for_whales = pd.DataFrame(hist)
     whales_exchange = detect_whale_flows_whalemap(df_price_for_whales, symbol=symbol)
 
-    # ✅ Whale Activity Table (matches UI of ETH)
+    # Clean whale table
     whale_table = []
     for w in whales_exchange:
         ts = w.get("timestamp")
@@ -353,21 +388,34 @@ def fetch_binance_market(symbol, start_date, end_date):
             "status": w.get("status", "neutral")
         })
 
-    # --- Aggregated Flows for NETFLOW chart ---
+    # ===========================================
+    # 5. NETFLOW (from aggTrades)
+    # ===========================================
     df_flows = fetch_aggregated_flows(symbol, start_date, end_date)
 
-    # --- Smart Money + Score ---
-    phase = smart_money_phase(df_flows, df_prices)
-    score = accumulation_score(df_flows, df_prices, len(whales_exchange))
+    # ============================================================
+    # 🚫 FIX: SMART MONEY / SCORE ONLY IF DATA EXISTS
+    # ============================================================
+    if df_prices.empty or df_flows.empty:
+        phase = "No Data"
+        score = 0
+    else:
+        phase = smart_money_phase(df_flows, df_prices)
+        score = accumulation_score(df_flows, df_prices, len(whales_exchange))
 
-    # --- PERFORMANCE ---
+    # ===========================================
+    # 6. PERFORMANCE CALC
+    # ===========================================
     perf = {}
-    if len(hist["close"]) >= 30:
-        perf["percent_change_24h"] = round(((hist["close"][-1] / hist["close"][-2]) - 1) * 100, 2)
-        perf["percent_change_7d"] = round(((hist["close"][-1] / hist["close"][-7]) - 1) * 100, 2)
-        perf["percent_change_30d"] = round(((hist["close"][-1] / hist["close"][-30]) - 1) * 100, 2)
+    closes = hist["close"]
+    if len(closes) >= 30:
+        perf["percent_change_24h"] = round(((closes[-1] / closes[-2]) - 1) * 100, 2)
+        perf["percent_change_7d"] = round(((closes[-1] / closes[-7]) - 1) * 100, 2)
+        perf["percent_change_30d"] = round(((closes[-1] / closes[-30]) - 1) * 100, 2)
 
-    # --- Market Stats ---
+    # ===========================================
+    # 7. TOKEN FUNDAMENTALS
+    # ===========================================
     from token_fundamentals import get_token_fundamentals
     fund = get_token_fundamentals(symbol)
 
@@ -375,29 +423,34 @@ def fetch_binance_market(symbol, start_date, end_date):
     fdv = fund.get("fdv")
     supply = fund.get("current_supply")
     max_supply = fund.get("max_supply")
-        
 
-    # --- Fees Chart (same as ETH) ---
+    # ===========================================
+    # 8. FEES (simple multiplier model)
+    # ===========================================
     fees = {
         "dates": hist["dates"],
         "values": [v * 0.0001 for v in hist["volume"]] if hist["volume"] else []
     }
 
-        # --- Netflow chart (uses flows) ---
+    # ===========================================
+    # 9. AGGREGATED NETFLOW SERIES
+    # ===========================================
     netflow = {
         "dates": df_flows["timestamp"].tolist() if not df_flows.empty else [],
         "values": df_flows["net_flow_usd"].tolist() if not df_flows.empty else []
     }
 
-    # ✅ Here we activate OpenAI
-    insights = generate_ai_insights(symbol, phase, score)
+    # ===========================================
+    # 10. AI INSIGHTS (only if data exists)
+    # ===========================================
+    if phase == "No Data":
+        insights = "Not enough valid market activity to generate insights."
+    else:
+        insights = generate_ai_insights(symbol, phase, score)
 
-
-    if os.environ.get("EXPORT_MODE") == "pdf":
-        output_file = f"/tmp/{symbol}_report.pdf"
-        export_pdf(symbol, df_prices, df_flows, whale_table, phase, score, insights, output_file)
-        return {"file": output_file}
-
+    # ===========================================
+    # 11. RETURN CLEAN JSON
+    # ===========================================
     return clean_nan({
         "results": {
             symbol: {
@@ -417,11 +470,10 @@ def fetch_binance_market(symbol, start_date, end_date):
                 "fees": fees,
                 "smart_money_phase": phase,
                 "accumulation_score": score,
-                "insights": insights  # ✅ AI now real
+                "insights": insights
             }
         }
     })
-    
 
 
 # ------------------------ CLI ------------------------

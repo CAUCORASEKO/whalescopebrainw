@@ -1,31 +1,57 @@
 #!/usr/bin/env python3
-# export_pdf_binance_market.py
 import os
-import re
 import sys
 import json
 import tempfile
-import subprocess
-from datetime import datetime
 import argparse
+from datetime import datetime
 from textwrap import wrap
+import requests
 from fpdf import FPDF
 import plotly.graph_objects as go
 
+API_URL = "http://127.0.0.1:5001/api/binance_market"
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-FETCHER = os.path.join(BASE_DIR, "binance_market_fetcher.py")
 FONT_PATH = os.path.join(BASE_DIR, "fonts", "DejaVuSans.ttf")
 
-def run_fetch(symbol, start, end):
-    cmd = [sys.executable, FETCHER, symbol, "--start-date", start, "--end-date", end]
-    result = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
-    output = result.stdout.strip()
+# ------------------------------
+# Fetch data from backend Flask
+# ------------------------------
 
-    match = re.search(r"(\{.*\})", output, re.DOTALL)
-    if not match:
-        raise RuntimeError("Could not parse JSON data")
-    return json.loads(match.group(1))
 
+
+def fetch_from_backend(symbol, start, end):
+    url = (
+        f"http://127.0.0.1:5001/api/binance_market"
+        f"?symbol={symbol}"
+        f"&startDate={start}"
+        f"&endDate={end}"
+    )
+
+    # ❗ NO IMPRIMAS NADA AQUÍ
+    try:
+        r = requests.get(url, timeout=30)
+        r.raise_for_status()
+        data = r.json()
+    except Exception as e:
+        raise RuntimeError(f"Backend request failed: {e}")
+
+    if (
+        not isinstance(data, dict)
+        or "results" not in data
+        or symbol not in data["results"]
+    ):
+        raise RuntimeError(
+            f"Backend response does not contain expected data for {symbol}"
+        )
+
+    return data["results"][symbol]
+
+
+
+# ------------------------------
+# Chart helpers
+# ------------------------------
 def make_chart(fig, outpath):
     fig.update_layout(template="simple_white")
     fig.write_image(outpath)
@@ -33,31 +59,37 @@ def make_chart(fig, outpath):
 def make_chart_price(data, outpath):
     candles = data.get("candles", {})
     if candles.get("dates"):
-        make_chart(
-            go.Figure(data=[go.Candlestick(
-                x=candles["dates"], open=candles["open"], high=candles["high"],
+        fig = go.Figure(
+            data=[go.Candlestick(
+                x=candles["dates"],
+                open=candles["open"], high=candles["high"],
                 low=candles["low"], close=candles["close"]
-            )]),
-            outpath
+            )]
         )
+        make_chart(fig, outpath)
 
 def make_chart_netflow(data, outpath):
     net = data.get("netflow", {})
     if net.get("dates"):
-        make_chart(go.Figure(data=[go.Bar(x=net["dates"], y=net["values"])]), outpath)
+        fig = go.Figure(data=[go.Bar(x=net["dates"], y=net["values"])])
+        make_chart(fig, outpath)
 
 def make_chart_fees(data, outpath):
     fees = data.get("fees", {})
     if fees.get("dates"):
-        make_chart(go.Figure(data=[go.Scatter(x=fees["dates"], y=fees["values"], mode="lines")]), outpath)
+        fig = go.Figure(data=[go.Scatter(x=fees["dates"], y=fees["values"], mode="lines")])
+        make_chart(fig, outpath)
 
+
+# ------------------------------
+# PDF generation
+# ------------------------------
 def generate_pdf(symbol, start, end, market):
     pdf = FPDF()
     pdf.set_auto_page_break(auto=True, margin=12)
     pdf.set_left_margin(10)
     pdf.set_right_margin(10)
 
-    # ✅ Fuente Unicode
     pdf.add_font("DejaVu", "", FONT_PATH, uni=True)
     pdf.add_font("DejaVu", "B", FONT_PATH, uni=True)
 
@@ -110,10 +142,11 @@ def generate_pdf(symbol, start, end, market):
 
     if isinstance(insight, dict):
         insight = insight.get("analysis") or json.dumps(insight, indent=2)
+
     if not insight:
         insight = "No AI insights available."
 
-    insight = insight.replace("→", "->").replace("—", "-")
+    insight = insight.replace("→","->").replace("—","-")
 
     for ln in wrap(insight, 95):
         pdf.multi_cell(0, 5, ln)
@@ -124,6 +157,10 @@ def generate_pdf(symbol, start, end, market):
     pdf.output(out)
     print(out)
 
+
+# ------------------------------
+# MAIN
+# ------------------------------
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("symbol")
@@ -131,8 +168,10 @@ def main():
     parser.add_argument("--end-date")
     args = parser.parse_args()
 
-    market = run_fetch(args.symbol, args.start_date, args.end_date)["results"][args.symbol]
+    # *** FIX: Fetch directly from backend ***
+    market = fetch_from_backend(args.symbol, args.start_date, args.end_date)
     generate_pdf(args.symbol, args.start_date, args.end_date, market)
+
 
 if __name__ == "__main__":
     main()
