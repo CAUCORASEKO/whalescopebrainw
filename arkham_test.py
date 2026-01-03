@@ -13,7 +13,7 @@ def load_api_key():
         data = json.load(f)
         key = data.get("ARKHAM_API_KEY")
         if not key:
-            raise ValueError("❌ ARKHAM_API_KEY not found in api_keys.json")
+            raise ValueError("ARKHAM_API_KEY not found in api_keys.json")
         return key
 
 

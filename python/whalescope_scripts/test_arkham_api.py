@@ -14,7 +14,7 @@ logging.basicConfig(
 )
 
 # API Key
-ARKHAM_API_KEY = "2ee4d166-eb6f-40a9-b89e-d061a8a328a1"
+ARKHAM_API_KEY = "Arkham_API_key_here"
 
 def check_api_key(api_key):
     """Verifica si la clave API de Arkham es válida usando el endpoint /health."""

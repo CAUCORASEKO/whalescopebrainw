@@ -73,7 +73,7 @@ CHAIN_MAP = {
 }
 
 ALLIUM_QUERIES = {
-    "MULTI": "AcUpz2e1YbQtkOkM1BHG",  # único query multi-chain
+    "MULTI": "Query_key_here",  # único query multi-chain
 }
 
 CACHE_DIR = pathlib.Path(".cache")
