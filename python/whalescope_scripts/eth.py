@@ -351,17 +351,21 @@ def build_staking_json(start_date, end_date):
 def fetch_allium_staking(start_date=None, end_date=None, query_id=None):
     """
     Fetch ETH staking activity from Allium.
-    - Uses the best query (STAKERS) that already includes deposits & withdrawals.
-    - Normalizes Allium response into a consistent JSON structure.
-    - Keeps precomputed daily_net_stake, deposits_est_eth, withdrawals_est_eth from Allium.
+    - Converts WEI → ETH (CRITICAL FIX)
+    - Recalculates USD correctly
+    - Keeps Allium-computed flows intact
     """
 
-    # 1. Select query ID (priority order)
+    # =========================
+    # Config
+    # =========================
+    WEI = 1e18
+
     query_to_use = (
         query_id
-        or ALLIUM_QUERY_ID_STAKERS   # ✅ best query: includes withdrawals
-        or ALLIUM_QUERY_ID_ACTIVITY  # fallback query: older version
-        or ALLIUM_QUERY_ID           # fallback generic
+        or ALLIUM_QUERY_ID_STAKERS
+        or ALLIUM_QUERY_ID_ACTIVITY
+        or ALLIUM_QUERY_ID
     )
 
     if not ALLIUM_API_KEY or not query_to_use:
@@ -369,72 +373,102 @@ def fetch_allium_staking(start_date=None, end_date=None, query_id=None):
         return []
 
     base_url = "https://api.allium.so/api/v1/explorer"
-    headers = {"X-API-KEY": ALLIUM_API_KEY, "Content-Type": "application/json"}
+    headers = {
+        "X-API-KEY": ALLIUM_API_KEY,
+        "Content-Type": "application/json"
+    }
 
     try:
-        # 2. Launch query async
+        # =========================
+        # Run query async
+        # =========================
         run_url = f"{base_url}/queries/{query_to_use}/run-async"
         payload = {
             "parameters": {"start_date": start_date, "end_date": end_date},
             "run_config": {"limit": 10000}
         }
+
         run_resp = requests.post(run_url, headers=headers, json=payload, timeout=60)
         run_resp.raise_for_status()
         run_id = run_resp.json().get("run_id")
+
         if not run_id:
             print("[ALLIUM] No run_id returned from Allium", file=sys.stderr)
             return []
 
-        # 3. Poll query status until it's complete
+        # =========================
+        # Poll status
+        # =========================
         status_url = f"{base_url}/query-runs/{run_id}"
-        for _ in range(30):  # wait up to ~30 seconds
-            status_resp = requests.get(status_url, headers=headers, timeout=30)
-            status_resp.raise_for_status()
-            if status_resp.json().get("status") == "success":
+        for _ in range(30):
+            status = requests.get(status_url, headers=headers, timeout=30).json()
+            if status.get("status") == "success":
                 break
             time.sleep(1)
 
-        # 4. Fetch query results
+        # =========================
+        # Fetch results
+        # =========================
         results_url = f"{base_url}/query-runs/{run_id}/results"
-        results_resp = requests.get(results_url, headers=headers, timeout=60)
-        results_resp.raise_for_status()
-        data = results_resp.json().get("data", [])
+        resp = requests.get(results_url, headers=headers, timeout=60)
+        resp.raise_for_status()
+        data = resp.json().get("data", [])
+
         if not isinstance(data, list):
             print("[ALLIUM] Invalid response structure", file=sys.stderr)
             return []
 
-        # 5. Normalize ETH rows into consistent format (respecting Allium precomputed fields)
+        # =========================
+        # Normalize + FIX WEI
+        # =========================
         normalized = []
+
         for row in data:
             chain_raw = str(row.get("chain_raw", row.get("chain", ""))).lower()
-            if chain_raw in ("eth", "ethereum"):
-                normalized.append({
-                    "activity_date": str(row.get("activity_date")).split("T")[0],
-                    "chain": "ethereum",
-                    "token_price_at_date": float(row.get("token_price_at_date", 0) or 0),
-                    "token_price_current": float(row.get("token_price_current", 0) or 0),
-                    "total_stake": float(row.get("total_stake", 0) or 0),
-                    "active_stake": float(row.get("active_stake", 0) or 0),
-                    "active_stake_usd": float(row.get("active_stake_usd", 0) or 0),
-                    "circulating_supply_usd": float(row.get("circulating_supply_usd", 0) or 0),
-                    "total_stake_usd_current": float(row.get("total_stake_usd_current", 0) or 0),
-                    "active_stake_usd_current": float(row.get("active_stake_usd_current", 0) or 0),
-                    "pct_total_stake_active": float(row.get("pct_total_stake_active", 0) or 0),
-                    "pct_circulating_staked_est": float(row.get("pct_circulating_staked_est", 0) or 0),
-                    "daily_net_stake": float(row.get("daily_net_stake", 0) or 0),
-                    "deposits_est_eth": float(row.get("deposits_est_eth", 0) or 0),
-                    "withdrawals_est_eth": float(row.get("withdrawals_est_eth", 0) or 0),
-                })
+            if chain_raw not in ("eth", "ethereum"):
+                continue
 
-        # 6. Sort chronologically
-        normalized_sorted = sorted(normalized, key=lambda x: x["activity_date"])
+            price = float(row.get("token_price_current", 0) or 0)
 
-        return normalized_sorted
+            total_stake_eth = float(row.get("total_stake", 0) or 0) / WEI
+            active_stake_eth = float(row.get("active_stake", 0) or 0) / WEI
+
+            normalized.append({
+                "activity_date": str(row.get("activity_date")).split("T")[0],
+                "chain": "ethereum",
+
+                # Prices
+                "token_price_at_date": float(row.get("token_price_at_date", 0) or price),
+                "token_price_current": price,
+
+                # ✅ FIXED VALUES (ETH, not WEI)
+                "total_stake": total_stake_eth,
+                "active_stake": active_stake_eth,
+
+                # ✅ USD properly recalculated
+                "total_stake_usd_current": total_stake_eth * price,
+                "active_stake_usd_current": active_stake_eth * price,
+
+                # Supply & ratios
+                "circulating_supply_usd": float(row.get("circulating_supply_usd", 0) or 0),
+                "pct_total_stake_active": float(row.get("pct_total_stake_active", 0) or 0),
+                "pct_circulating_staked_est": float(row.get("pct_circulating_staked_est", 0) or 0),
+
+                # ✅ Flows already in ETH → keep as-is
+                "daily_net_stake": float(row.get("daily_net_stake", 0) or 0),
+                "deposits_est_eth": float(row.get("deposits_est_eth", 0) or 0),
+                "withdrawals_est_eth": float(row.get("withdrawals_est_eth", 0) or 0),
+            })
+
+        # =========================
+        # Sort by date
+        # =========================
+        normalized.sort(key=lambda x: x["activity_date"])
+        return normalized
 
     except Exception as e:
         print(f"[ALLIUM] Error fetching staking data: {e}", file=sys.stderr)
         return []
-    
     
 # ============================================================
 # SAVE TO SQLITE

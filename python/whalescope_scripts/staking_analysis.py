@@ -254,62 +254,119 @@ def fetch_allium_staking(symbol: str, start_date: str, end_date: str):
 
 def process_allium_staking(symbol, data, start_date=None, end_date=None, market_data=None):
     import pandas as pd
+    import numpy as np
 
+    # --------------------------------------------------
+    # Build DataFrame
+    # --------------------------------------------------
     df = pd.DataFrame(data)
     if df.empty:
-        log(f"[ALLIUM] Empty Allium dataset for {symbol}")
+        log(f"[ALLIUM] Empty dataset for {symbol}")
         return []
 
-    # 🔹 Convertir fechas
+    # --------------------------------------------------
+    # Dates
+    # --------------------------------------------------
     if "activity_date" in df.columns:
         df["activity_date"] = pd.to_datetime(df["activity_date"], errors="coerce")
 
-    # 🔹 Normalizar símbolos (ETHEREUM → ETH, POLYGON → MATIC, etc.)
-    if "chain_raw" in df.columns:
-        df["symbol"] = df["chain_raw"].astype(str).str.upper().map(lambda x: CHAIN_MAP.get(x.lower(), x))
-    elif "symbol" in df.columns:
-        df["symbol"] = df["symbol"].astype(str).str.upper().map(lambda x: CHAIN_MAP.get(x.lower(), x))
-    else:
-        df["symbol"] = symbol.upper()
-
-    # 🔹 Filtro por la chain solicitada
+    # --------------------------------------------------
+    # Normalize symbol
+    # --------------------------------------------------
     symbol_norm = CHAIN_MAP.get(symbol.lower(), symbol.upper())
+
+    if "chain_raw" in df.columns:
+        df["symbol"] = (
+            df["chain_raw"]
+            .astype(str)
+            .str.lower()
+            .map(lambda x: CHAIN_MAP.get(x, x.upper()))
+        )
+    else:
+        df["symbol"] = symbol_norm
+
     df = df[df["symbol"] == symbol_norm]
     if df.empty:
-        log(f"[ALLIUM] No data rows found for {symbol_norm} in Allium multi-chain dataset")
+        log(f"[ALLIUM] No rows for {symbol_norm}")
         return []
 
-    # 🔹 Convertir campos numéricos
+    # --------------------------------------------------
+    # Numeric conversion
+    # --------------------------------------------------
     numeric_cols = [
-        "token_price_at_date", "token_price_current",
-        "total_stake", "active_stake", "active_stake_usd",
-        "circulating_supply_usd", "total_stake_usd_current",
-        "active_stake_usd_current", "pct_total_stake_active",
-        "pct_circulating_staked_est", "net_flow",
-        "deposits_est", "withdrawals_est",
+        "token_price_at_date",
+        "token_price_current",
+        "total_stake",
+        "active_stake",
+        "circulating_supply_usd",
+        "total_stake_usd_current",
+        "active_stake_usd_current",
+        "pct_total_stake_active",
+        "pct_circulating_staked_est",
+        "net_flow",
+        "deposits_est",
+        "withdrawals_est",
     ]
+
     for col in numeric_cols:
         if col in df.columns:
             df[col] = pd.to_numeric(df[col], errors="coerce")
 
-    # 🔹 Calcular % de circulante staked si falta
-    if "pct_circulating_staked_est" not in df.columns or df["pct_circulating_staked_est"].isnull().all():
-        if "total_stake_usd_current" in df.columns and "circulating_supply_usd" in df.columns:
+    # --------------------------------------------------
+    # ✅ ETH FIX — Allium returns WEI
+    # --------------------------------------------------
+    if symbol_norm == "ETH":
+        WEI = 1e18
+
+        for col in [
+            "total_stake",
+            "active_stake",
+            "net_flow",
+            "deposits_est",
+            "withdrawals_est",
+        ]:
+            if col in df.columns:
+                df[col] = df[col] / WEI
+
+    # --------------------------------------------------
+    # ✅ USD recomputation (CRITICAL)
+    # --------------------------------------------------
+    if "token_price_current" in df.columns:
+        price = df["token_price_current"]
+
+        if market_data and isinstance(market_data, dict):
+            price = price.fillna(market_data.get("price_usd"))
+
+        if "total_stake" in df.columns:
+            df["total_stake_usd_current"] = df["total_stake"] * price
+
+        if "active_stake" in df.columns:
+            df["active_stake_usd_current"] = df["active_stake"] * price
+
+    # --------------------------------------------------
+    # Circulating staked %
+    # --------------------------------------------------
+    if (
+        "pct_circulating_staked_est" not in df.columns
+        or df["pct_circulating_staked_est"].isnull().all()
+    ):
+        if (
+            "total_stake_usd_current" in df.columns
+            and "circulating_supply_usd" in df.columns
+        ):
             df["pct_circulating_staked_est"] = (
-                100 * df["total_stake_usd_current"] / df["circulating_supply_usd"]
+                100
+                * df["total_stake_usd_current"]
+                / df["circulating_supply_usd"]
             ).round(3)
 
-    # 🔹 Rellenar precios con CoinGecko si falta
-    if market_data and isinstance(market_data, dict) and "price_usd" in market_data:
-        if "token_price_current" in df.columns:
-            df["token_price_current"] = df["token_price_current"].fillna(market_data["price_usd"])
-        if "token_price_at_date" not in df.columns:
-            df["token_price_at_date"] = market_data["price_usd"]
+    # --------------------------------------------------
+    # Sort + clean
+    # --------------------------------------------------
+    df = df.sort_values("activity_date")
+    df = df.replace({np.nan: None})
 
-    # 🔹 Ordenar y devolver
-    df = df.sort_values(["activity_date"], ascending=True)
     return df.to_dict(orient="records")
-
 
 # ============================================================
 # Core Logic (Robusto con Fallback)

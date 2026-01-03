@@ -5,47 +5,54 @@ const { app, BrowserWindow, ipcMain, dialog } = require("electron");
 const path = require("path");
 const fs = require("fs");
 const { spawn } = require("child_process");
+
 let backendProcess = null;
 
 // =============================================================
-// 🌍 Entorno & Rutas Base (clave para DEV + .DMG)
+// 🌍 Entorno & Rutas Base (DEV vs DMG)
 // =============================================================
 const isDev = !app.isPackaged;
 
+// 🔹 Dev: raíz del repo (whalescopebrainw/)
+// 🔹 Prod: Resources/python dentro del .app
+const repoRoot = path.resolve(__dirname, "..");
+
+const pythonRoot = isDev
+  ? repoRoot                                  // DEV: whalescopebrainw/
+  : path.join(process.resourcesPath, "python"); // PROD: Contents/Resources/python/
+
+// Scripts Python (backend + exporters)
+const scriptsRoot = isDev
+  ? path.join(repoRoot, "python", "whalescope_scripts")
+  : path.join(pythonRoot, "whalescope_scripts");
+
+// Ejecutable de Python
+const pythonExec = isDev
+  ? path.join(repoRoot, ".venv", "bin", "python3") // DEV: .venv/bin/python3
+  : path.join(pythonRoot, "bin", "python3");       // PROD: python/bin/python3
+
+// API keys (siempre en userData)
 const apiKeysPath = path.join(app.getPath("userData"), "api_keys.json");
 
-// 🟡 DEV → carpeta del proyecto
-// 🔵 DMG → pyapp dentro del .app
-const projectRoot = isDev
-  ? path.resolve(__dirname, "..", "pyapp")   // ← 💯 correcto
-  : path.join(process.resourcesPath, "python"); 
-
-// 🐍 Python interpreter
-const pythonPath = isDev
-  ? path.join(projectRoot, "..", ".venv/bin/python3") // ✅ DEV use .venv
-  : path.join(projectRoot, "bin/python3");            // ✅ PROD uses embedded python
-
 // =============================================================
-// 🧭 Obtener ruta de script Python según entorno
+// 🧭 Ruta de scripts Python
 // =============================================================
 function getScriptPath(scriptName) {
-  
-    return path.join(projectRoot, "whalescope_scripts", scriptName);
-    
+  return path.join(scriptsRoot, scriptName);
 }
 
 // =============================================================
-// ⚙️ Ejecutar script Python
+// ⚙️ Ejecutar script Python (exportadores, etc.)
 // =============================================================
 function runPythonScript(scriptName, args = []) {
   const scriptPath = getScriptPath(scriptName);
 
-  console.log(`[Main] 🐍 Python: ${pythonPath}`);
+  console.log(`[Main] 🐍 Python: ${pythonExec}`);
   console.log(`[Main] 📄 Script: ${scriptPath}`);
 
   return new Promise((resolve, reject) => {
-    const proc = spawn(pythonPath, [scriptPath, ...args], {
-      cwd: projectRoot,
+    const proc = spawn(pythonExec, [scriptPath, ...args], {
+      cwd: isDev ? repoRoot : pythonRoot,
       env: { ...process.env },
       stdio: ["ignore", "pipe", "pipe"],
     });
@@ -53,10 +60,10 @@ function runPythonScript(scriptName, args = []) {
     let stdout = "";
     let stderr = "";
 
-    proc.stdout.on("data", d => stdout += d.toString());
-    proc.stderr.on("data", d => stderr += d.toString());
+    proc.stdout.on("data", (d) => (stdout += d.toString()));
+    proc.stderr.on("data", (d) => (stderr += d.toString()));
 
-    proc.on("close", code => {
+    proc.on("close", (code) => {
       if (code === 0) resolve(stdout.trim());
       else reject(new Error(stderr || `Python exited with code ${code}`));
     });
@@ -72,12 +79,14 @@ ipcMain.handle("saveApiKeys", async (_, keys) => {
 });
 
 ipcMain.handle("loadApiKeys", async () => {
-  if (fs.existsSync(apiKeysPath))
-    return { success: true, keys: JSON.parse(fs.readFileSync(apiKeysPath, "utf8")) };
+  if (fs.existsSync(apiKeysPath)) {
+    return {
+      success: true,
+      keys: JSON.parse(fs.readFileSync(apiKeysPath, "utf8")),
+    };
+  }
   return { success: false, keys: {} };
 });
-
-
 
 // =============================================================
 // 📡 IPC — Carga de datos desde Flask Backend (REST)
@@ -105,125 +114,132 @@ ipcMain.handle("loadData", async (event, params) => {
   }
 });
 
-
 // =============================================================
 // 📁 Export CSV — MarketBrain
 // =============================================================
-ipcMain.handle("marketbrain:exportCsv", async (event, { symbols, startDate, endDate }) => {
-  const saveDialog = await dialog.showSaveDialog({
-    title: `Export MarketBrain CSV`,
-    defaultPath: `MarketBrain_${symbols}_${startDate}_${endDate}.csv`,
-    filters: [{ name: "CSV Files", extensions: ["csv"] }]
-  });
+ipcMain.handle(
+  "marketbrain:exportCsv",
+  async (event, { symbols, startDate, endDate }) => {
+    const saveDialog = await dialog.showSaveDialog({
+      title: `Export MarketBrain CSV`,
+      defaultPath: `MarketBrain_${symbols}_${startDate}_${endDate}.csv`,
+      filters: [{ name: "CSV Files", extensions: ["csv"] }],
+    });
 
-  if (saveDialog.canceled) return { canceled: true };
+    if (saveDialog.canceled) return { canceled: true };
 
-  try {
-    console.log("[Main] 🧾 Exporting MarketBrain CSV...");
+    try {
+      console.log("[Main] 🧾 Exporting MarketBrain CSV...");
 
-    const tempCsvPath = await runPythonScript("export_marketbrain_csv.py", [
-      symbols,
+      const tempCsvPath = await runPythonScript("export_marketbrain_csv.py", [
+        symbols,
+        startDate,
+        endDate,
+      ]);
+
+      fs.copyFileSync(tempCsvPath.trim(), saveDialog.filePath);
+      require("electron").shell.openPath(saveDialog.filePath);
+
+      return { success: true, filePath: saveDialog.filePath };
+    } catch (err) {
+      console.error("[Main] ❌ MarketBrain CSV Export Error:", err);
+      return { success: false, error: err.message };
+    }
+  }
+);
+
+// =============================================================
+// 📄 Export CSV — Binance Market
+// =============================================================
+ipcMain.handle(
+  "binance_market:exportCsv",
+  async (_, { symbol, startDate, endDate }) => {
+    const saveDialog = await dialog.showSaveDialog({
+      defaultPath: `WhaleScope_${symbol}_${startDate}_${endDate}.csv`,
+      filters: [{ name: "CSV Files", extensions: ["csv"] }],
+    });
+    if (saveDialog.canceled) return;
+
+    const tempCsvPath = await runPythonScript("export_binance_market_csv.py", [
+      symbol.toUpperCase(),
+      "--start-date",
       startDate,
-      endDate
+      "--end-date",
+      endDate,
     ]);
 
-    fs.copyFileSync(tempCsvPath.trim(), saveDialog.filePath);
+    fs.copyFileSync(tempCsvPath, saveDialog.filePath);
     require("electron").shell.openPath(saveDialog.filePath);
-
-    return { success: true, filePath: saveDialog.filePath };
-  } catch (err) {
-    console.error("[Main] ❌ MarketBrain CSV Export Error:", err);
-    return { success: false, error: err.message };
+    return { success: true };
   }
-});
-
-
-// =============================================================
-// 📄 Export CSV — Binance Market ✅
-// =============================================================
-ipcMain.handle("binance_market:exportCsv", async (_, { symbol, startDate, endDate }) => {
-  const saveDialog = await dialog.showSaveDialog({
-    defaultPath: `WhaleScope_${symbol}_${startDate}_${endDate}.csv`,
-    filters: [{ name: "CSV Files", extensions: ["csv"] }],
-  });
-  if (saveDialog.canceled) return;
-
-  const tempCsvPath = await runPythonScript("export_binance_market_csv.py", [
-    symbol.toUpperCase(),
-    "--start-date", startDate,
-    "--end-date", endDate
-  ]);
-
-  fs.copyFileSync(tempCsvPath, saveDialog.filePath);
-  require("electron").shell.openPath(saveDialog.filePath);
-  return { success: true };
-});
+);
 
 // =============================================================
-// 📄 Export PDF — Allium & Binance Market ✅
+// 📄 Export PDF — Allium & Binance Market
 // =============================================================
-ipcMain.handle("exportPDF", async (_, { section, symbols, startDate, endDate, chartImageBase64 }) => {
-  const saveDialog = await dialog.showSaveDialog({
-    defaultPath: `WhaleScope_${section}_${symbols}_${startDate}_${endDate}.pdf`,
-    filters: [{ name: "PDF Files", extensions: ["pdf"] }],
-  });
-  if (saveDialog.canceled) return;
+ipcMain.handle(
+  "exportPDF",
+  async (_, { section, symbols, startDate, endDate, chartImageBase64 }) => {
+    const saveDialog = await dialog.showSaveDialog({
+      defaultPath: `WhaleScope_${section}_${symbols}_${startDate}_${endDate}.pdf`,
+      filters: [{ name: "PDF Files", extensions: ["pdf"] }],
+    });
+    if (saveDialog.canceled) return;
 
-  let scriptName, args = [];
+    let scriptName;
+    let args = [];
 
-  if (section === "allium") {
-    scriptName = "export_pdf_allium.py";
+    if (section === "allium") {
+      scriptName = "export_pdf_allium.py";
 
-    let chartPath = "";
-    if (chartImageBase64) {
-      chartPath = path.join(app.getPath("temp"), `allium_chart_${Date.now()}.png`);
-      fs.writeFileSync(chartPath, chartImageBase64.replace(/^data:image\/png;base64,/, ""), "base64");
-      args.push(chartPath);
+      let chartPath = "";
+      if (chartImageBase64) {
+        chartPath = path.join(
+          app.getPath("temp"),
+          `allium_chart_${Date.now()}.png`
+        );
+        fs.writeFileSync(
+          chartPath,
+          chartImageBase64.replace(/^data:image\/png;base64,/, ""),
+          "base64"
+        );
+        args.push(chartPath);
+      }
+
+      args.unshift(symbols.toUpperCase(), startDate, endDate);
+    } else if (section === "binance_market") {
+      scriptName = "export_pdf_binance_market.py";
+      args = [
+        symbols.toUpperCase(),
+        "--start-date",
+        startDate,
+        "--end-date",
+        endDate,
+      ];
+    } else {
+      return { success: false, error: "Export not supported here." };
     }
 
-    args.unshift(symbols.toUpperCase(), startDate, endDate);
+    const pdfTmpPath = await runPythonScript(scriptName, args);
+    fs.copyFileSync(pdfTmpPath, saveDialog.filePath);
+    require("electron").shell.openPath(saveDialog.filePath);
+
+    return { success: true };
   }
-
-  else if (section === "binance_market") {
-    scriptName = "export_pdf_binance_market.py";
-    args = [
-      symbols.toUpperCase(),
-      "--start-date", startDate,
-      "--end-date", endDate
-    ];
-  }
-
-  else return { success: false, error: "Export not supported here." };
-
-  const pdfTmpPath = await runPythonScript(scriptName, args);
-  fs.copyFileSync(pdfTmpPath, saveDialog.filePath);
-  require("electron").shell.openPath(saveDialog.filePath);
-
-  return { success: true };
-});
+);
 
 // =============================================================
 // 🚀 Flask Backend + Window
 // =============================================================
-
-
 function startPythonBackend() {
-  const pythonExec = isDev
-    ? path.join(projectRoot, "..", ".venv/bin/python3")
-    : path.join(process.resourcesPath, "python", "bin", "python3");
-
-  const backendScript = isDev
-    ? path.join(projectRoot, "whalescope_scripts", "backend_ultra_pro.py")
-    : path.join(process.resourcesPath, "python", "whalescope_scripts", "backend_ultra_pro.py");
+  const backendScript = getScriptPath("backend_ultra_pro.py");
 
   console.log("[Main] 🐍 Starting Backend:");
   console.log(" → Python:", pythonExec);
   console.log(" → Script:", backendScript);
 
   backendProcess = spawn(pythonExec, [backendScript], {
-    cwd: isDev
-      ? path.join(projectRoot, "..")
-      : path.join(process.resourcesPath, "python"), // ✅ FIX AQUÍ
+    cwd: isDev ? repoRoot : pythonRoot,
     env: { ...process.env },
     stdio: "inherit",
   });
@@ -236,9 +252,6 @@ function startPythonBackend() {
     console.log(`[Main] 🧩 Backend closed with code ${code}`);
   });
 }
-
-
-
 
 function createWindow() {
   new BrowserWindow({
@@ -254,5 +267,5 @@ function createWindow() {
 
 app.whenReady().then(() => {
   startPythonBackend();
-  setTimeout(createWindow, 1500); // ⏳ darle tiempo a Flask para arrancar
+  setTimeout(createWindow, 1500); // pequeño margen para que Flask arranque
 });

@@ -2,13 +2,10 @@ const fs = require("fs");
 const path = require("path");
 
 exports.default = async function (context) {
-  // Nombre base de la app (ej: WhaleScope)
-  const appBaseName = context.packager.appInfo.productFilename;
-
-  // ✅ Ahora la ruta correcta es .../Resources/python/bin/python3
-  const pythonPath = path.join(
+  const appName = context.packager.appInfo.productFilename;
+  const pythonBin = path.join(
     context.appOutDir,
-    appBaseName + ".app",
+    `${appName}.app`,
     "Contents",
     "Resources",
     "python",
@@ -17,10 +14,9 @@ exports.default = async function (context) {
   );
 
   try {
-    fs.chmodSync(pythonPath, 0o755);
-    console.log("✅ afterPackFix: Embedded Python marked executable");
-  } catch (err) {
-    console.error("❌ afterPackFix error:", err);
-    console.error("⛔ PATH that failed:", pythonPath);
+    fs.chmodSync(pythonBin, 0o755);
+    console.log("✅ Embedded Python executable");
+  } catch (e) {
+    console.error("❌ afterPackFix failed:", pythonBin);
   }
 };
