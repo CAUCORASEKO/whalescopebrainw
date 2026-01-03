@@ -10,7 +10,7 @@ import os
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
 # Clave API de FRED
-FRED_API_KEY = "ce4f47b6369b611995b2db9b6a5ee3d4"
+FRED_API_KEY = "fed_api_key_here"
 
 # Fecha actual para filtrar datos
 current_date = datetime.now()
