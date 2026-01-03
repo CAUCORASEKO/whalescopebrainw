@@ -132,5 +132,15 @@ Tämän `.dmg`-tiedoston voi jakaa suoraan — se toimii millä tahansa Macilla 
 
 ---
 
+## Repository Scope
+
+Tämä repositorio on julkaistu portfolio- ja järjestelmäarkkitehtuurin
+havainnollistamistarkoituksessa.
+
+Osa toteutuksen yksityiskohdista, aineistoista ja konfiguraatioista on
+tietoisesti jätetty pois tai yksinkertaistettu.
+
+---
+
 ## 📄 Lisenssi
 MIT-lisenssi © 2025 Claudio Valenzuela (CAUCO)

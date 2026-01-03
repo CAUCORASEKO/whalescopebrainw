@@ -131,6 +131,13 @@ You can distribute this `.dmg` directly — it runs on any Mac **without requiri
 
 ---
 
+## Repository Scope
+
+This repository is shared for portfolio and architectural demonstration purposes.
+Certain implementation details, datasets, and configurations are intentionally omitted
+or simplified.
+
+---
 ## 📄 License
 MIT License © 2025 Claudio Valenzuela (CAUCO)
 
